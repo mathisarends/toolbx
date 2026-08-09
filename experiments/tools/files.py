@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
 from agenttoolkit.builtins.fs import Workspace
-from agenttoolkit.tools import Inject, Tools
+from agenttoolkit.tools import Inject, ToolRegistry
 
 
 class ReadFileParams(BaseModel):
@@ -23,7 +23,7 @@ class EditFileParams(BaseModel):
     )
 
 
-def register_file_tools(tools: Tools) -> None:
+def register_file_tools(tools: ToolRegistry) -> None:
     @tools.action(
         "Read a UTF-8 text file from the workspace.",
         params=ReadFileParams,

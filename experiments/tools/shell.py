@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 
 from agenttoolkit import OutputBudget
 from agenttoolkit.builtins.shell import CommandResult, CommandRunner
-from agenttoolkit.tools import Inject, Tools
+from agenttoolkit.tools import Inject, ToolRegistry
 
 
 class ShellParams(BaseModel):
@@ -10,7 +10,7 @@ class ShellParams(BaseModel):
 
 
 def register_shell_tool(
-    tools: Tools,
+    tools: ToolRegistry,
     *,
     name: str = "bash",
     description: str = "Run a Bash command in the sandbox.",

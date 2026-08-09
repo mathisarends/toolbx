@@ -3,7 +3,7 @@ from pathlib import PurePosixPath
 from pydantic import BaseModel, Field
 
 from agenttoolkit import Skills
-from agenttoolkit.tools import Inject, Tools
+from agenttoolkit.tools import Inject, ToolRegistry
 
 
 class LoadSkillParams(BaseModel):
@@ -11,7 +11,7 @@ class LoadSkillParams(BaseModel):
 
 
 def register_skill_loader(
-    tools: Tools,
+    tools: ToolRegistry,
     *,
     container_root: str | PurePosixPath = "/skills",
 ) -> None:

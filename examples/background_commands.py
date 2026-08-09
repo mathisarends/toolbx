@@ -7,7 +7,7 @@ from typing import Any, cast
 
 from pydantic import BaseModel, Field
 
-from agenttoolkit import Tools
+from agenttoolkit import ToolRegistry, Tools
 from agenttoolkit.builtins import (
     CommandDefaults,
     CommandJobManager,
@@ -43,7 +43,7 @@ def _response(snapshot: CommandJobSnapshot) -> dict[str, Any]:
 
 
 def register_background_shell_tools(
-    tools: Tools,
+    tools: ToolRegistry,
     jobs: CommandJobManager,
 ) -> None:
     @tools.action(

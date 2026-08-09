@@ -40,6 +40,8 @@ it is a building block, not a framework.
   logging middleware; no middleware is installed implicitly.
 - Thin, dependency-free schema adapters for OpenAI and Anthropic tool-call
   formats.
+- A separate structured-output registry that creates Pydantic action models
+  without adding that interface to schema-based tools.
 - Tool implementations return their natural Python values; the execution
   pipeline does not impose an application-specific result envelope.
 - Async filesystem and shell ports with local, Docker, and Bubblewrap
@@ -199,8 +201,9 @@ tools = Tools(context=context)
 The context is known up front, so it belongs in the constructor. Dependencies
 that only materialise later go through `context.provide(...)` on the instance
 you already handed over; a context that differs per request goes through the
-`context=` argument on `execute(...)`, `get_schema(...)` and
-`create_action_model(...)`, which leaves the registry context untouched.
+`context=` argument on `execute(...)` and the representation-specific
+`get_schema(...)` or `create_action_model(...)`, which leaves the registry
+context untouched.
 
 `ToolContext.resolve(T)` returns the most recently provided instance of type
 `T` (or a subclass), searching in reverse insertion order. Useful mutators:
@@ -263,6 +266,28 @@ anthropic_schemas = tools.get_schema(ToolSchemaFormat.ANTHROPIC)
 
 result = await tools.execute("search", {"query": "tool middleware"}, context=context)
 ```
+
+For providers that express tool selection as structured output, use the
+separate `StructuredOutputTools` representation. It shares registration,
+context, middleware, execution, and merging with `Tools`, but exposes action
+models instead of provider tool-call schemas:
+
+```python
+from agenttoolkit import StructuredOutputTools
+
+tools = StructuredOutputTools()
+
+
+@tools.action("Add two integers")
+def add(a: int, b: int) -> int:
+    return a + b
+
+
+[AddAction] = tools.create_action_model()
+```
+
+Code that only registers or executes tools, independent of how they are shown
+to a model, can accept the shared `ToolRegistry` type.
 
 A typical loop confirms approval-gated tools before executing, and reports
 status while a call is in flight:
@@ -357,7 +382,7 @@ agent.
 
 ## Merging registries
 
-Combine tools from multiple `Tools` instances — e.g. when composing a
+Combine tools from multiple `ToolRegistry` instances — e.g. when composing a
 registry from several feature modules:
 
 ```python

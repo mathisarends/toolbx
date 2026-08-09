@@ -4,7 +4,7 @@ from typing import Any
 
 from llmify import RetryableError, RetryEvent
 
-from agenttoolkit.tools import Tool, ToolContext, Tools
+from agenttoolkit.tools import Tool, ToolContext, ToolRegistry
 from experiments.agent import Agent
 
 # Second line of defence behind llmify's own retries: those cover a burst of a
@@ -17,7 +17,7 @@ class Console:
 
     def __init__(
         self,
-        tools: Tools,
+        tools: ToolRegistry,
         *,
         context: ToolContext | None = None,
     ) -> None:

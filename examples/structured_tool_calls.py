@@ -2,7 +2,7 @@ import asyncio
 
 from pydantic import BaseModel, Field
 
-from agenttoolkit import Tools
+from agenttoolkit import StructuredOutputTools
 
 
 class MultiplyParams(BaseModel):
@@ -14,7 +14,7 @@ class AgentAction(BaseModel):
     reasoning: str = Field(description="Why this tool should be called")
 
 
-tools = Tools()
+tools = StructuredOutputTools()
 
 
 @tools.action("Multiply two integers", params=MultiplyParams)

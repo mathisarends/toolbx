@@ -1,49 +1,24 @@
 import asyncio
-import os
-from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 
 import agenttoolkit.builtins.shell.backends.docker as docker_backend
 from agenttoolkit.builtins.shell import (
-    DEFAULT_TIMEOUT,
     CommandDefaults,
     CommandJobManager,
     CommandJobNotFoundError,
     CommandJobState,
     CommandJobStateError,
     CommandResult,
-    CommandTimeout,
     DockerSandbox,
     SandboxPolicy,
 )
 
 
-class ControlledRunner:
-    def __init__(self) -> None:
-        self.started = asyncio.Event()
-        self.release = asyncio.Event()
-        self.timeout: CommandTimeout = DEFAULT_TIMEOUT
-
-    async def execute(
-        self,
-        command: str,
-        *,
-        cwd: str | os.PathLike[str] | None = None,
-        env: Mapping[str, str] | None = None,
-        stdin: str | bytes | None = None,
-        timeout: CommandTimeout = DEFAULT_TIMEOUT,
-    ) -> CommandResult:
-        self.timeout = timeout
-        self.started.set()
-        await self.release.wait()
-        return CommandResult(command, 0, "finished\n", "", 0.01)
-
-
 @pytest.mark.asyncio
-async def test_command_jobs_start_poll_finish_and_forget() -> None:
-    runner = ControlledRunner()
+async def test_command_jobs_start_poll_finish_and_forget(controlled_runner) -> None:
+    runner = controlled_runner
     async with CommandJobManager(runner) as jobs:
         started = jobs.start("build", timeout=None)
         assert started.state is CommandJobState.RUNNING
@@ -67,8 +42,8 @@ async def test_command_jobs_start_poll_finish_and_forget() -> None:
 
 
 @pytest.mark.asyncio
-async def test_command_jobs_cancel_and_close() -> None:
-    runner = ControlledRunner()
+async def test_command_jobs_cancel_and_close(controlled_runner) -> None:
+    runner = controlled_runner
     jobs = CommandJobManager(runner)
     first = jobs.start("train")
     await runner.started.wait()
@@ -80,6 +55,72 @@ async def test_command_jobs_cancel_and_close() -> None:
     await jobs.close()
     with pytest.raises(CommandJobStateError, match="closed"):
         jobs.start("another")
+    with pytest.raises(CommandJobStateError, match="closed"):
+        await jobs.__aenter__()
+
+
+@pytest.mark.asyncio
+async def test_command_jobs_validate_lifecycle_operations(controlled_runner) -> None:
+    runner = controlled_runner
+    jobs = CommandJobManager(runner)
+
+    with pytest.raises(ValueError, match="must not be empty"):
+        jobs.start("")
+
+    started = jobs.start("long-running")
+    await runner.started.wait()
+    with pytest.raises(CommandJobStateError, match="cannot forget"):
+        jobs.forget(started.job_id)
+
+    await jobs.close()
+    with pytest.raises(CommandJobNotFoundError, match="unknown command job"):
+        jobs.check_output(started.job_id)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("result", "expected_state"),
+    [
+        (
+            CommandResult("timeout", -1, "partial", "", 1.0, timed_out=True),
+            CommandJobState.TIMED_OUT,
+        ),
+        (
+            CommandResult("failure", 7, "", "bad", 0.1),
+            CommandJobState.FAILED,
+        ),
+    ],
+)
+async def test_command_jobs_preserve_unsuccessful_results(
+    result: CommandResult,
+    expected_state: CommandJobState,
+    immediate_runner,
+) -> None:
+    jobs = CommandJobManager(immediate_runner(result))
+    started = jobs.start(result.command)
+    await asyncio.sleep(0)
+
+    snapshot = jobs.check_output(started.job_id)
+    assert snapshot.state is expected_state
+    assert snapshot.result is result
+    assert snapshot.output == result.output
+
+    # Cancelling an already completed job preserves its terminal state.
+    assert (await jobs.cancel(started.job_id)).state is expected_state
+    await jobs.close()
+
+
+@pytest.mark.asyncio
+async def test_command_jobs_report_runner_exceptions(immediate_runner) -> None:
+    jobs = CommandJobManager(immediate_runner(error=RuntimeError("runner broke")))
+    started = jobs.start("explode")
+    await asyncio.sleep(0)
+
+    snapshot = jobs.check_output(started.job_id)
+    assert snapshot.state is CommandJobState.FAILED
+    assert snapshot.result is None
+    assert snapshot.error == "RuntimeError: runner broke"
+    await jobs.close()
 
 
 @pytest.mark.asyncio

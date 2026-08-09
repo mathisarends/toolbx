@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -13,33 +14,12 @@ from agenttoolkit import (
 )
 
 
-def skill_source(
-    name: str,
-    description: str = "A test skill.",
-) -> str:
-    return (
-        "---\n"
-        f"name: {name}\n"
-        f"description: {description}\n"
-        "---\n"
-        "# Test\n\n"
-        "Follow the test workflow.\n"
-    )
-
-
-def make_skill(root: Path, name: str = "existing") -> Path:
-    directory = root / name
-    directory.mkdir(parents=True)
-    (directory / "SKILL.md").write_text(
-        skill_source(name),
-        encoding="utf-8",
-    )
-    return directory
-
-
 @pytest.mark.asyncio
-async def test_writing_tool_refreshes_and_returns_new_catalog(tmp_path: Path) -> None:
-    make_skill(tmp_path)
+async def test_writing_tool_refreshes_and_returns_new_catalog(
+    tmp_path: Path,
+    make_skill: Callable[..., Path],
+) -> None:
+    make_skill(tmp_path, "existing")
     skills = Skills.from_dir(tmp_path)
     tools = Tools(
         context=ToolContext(skills),
@@ -61,8 +41,9 @@ async def test_writing_tool_refreshes_and_returns_new_catalog(tmp_path: Path) ->
 @pytest.mark.asyncio
 async def test_every_tool_refreshes_registry_by_default(
     tmp_path: Path,
+    make_skill: Callable[..., Path],
 ) -> None:
-    make_skill(tmp_path)
+    make_skill(tmp_path, "existing")
     skills = Skills.from_dir(tmp_path)
     tools = Tools(
         context=ToolContext(skills),
@@ -84,8 +65,9 @@ async def test_every_tool_refreshes_registry_by_default(
 async def test_invalid_edit_reports_error_and_keeps_active_registry(
     tmp_path: Path,
     caplog: pytest.LogCaptureFixture,
+    make_skill: Callable[..., Path],
 ) -> None:
-    directory = make_skill(tmp_path)
+    directory = make_skill(tmp_path, "existing")
     skills = Skills.from_dir(tmp_path)
     tools = Tools(
         context=ToolContext(skills),
@@ -113,8 +95,9 @@ async def test_invalid_edit_reports_error_and_keeps_active_registry(
 @pytest.mark.asyncio
 async def test_failed_writing_tool_still_reports_catalog_update(
     tmp_path: Path,
+    make_skill: Callable[..., Path],
 ) -> None:
-    make_skill(tmp_path)
+    make_skill(tmp_path, "existing")
     skills = Skills.from_dir(tmp_path)
     tools = Tools(
         context=ToolContext(skills),
@@ -150,11 +133,12 @@ async def test_context_without_skills_makes_the_middleware_a_no_op() -> None:
 @pytest.mark.asyncio
 async def test_per_call_context_selects_the_refreshed_registry(
     tmp_path: Path,
+    make_skill: Callable[..., Path],
 ) -> None:
     first_root = tmp_path / "first"
     second_root = tmp_path / "second"
-    make_skill(first_root)
-    make_skill(second_root)
+    make_skill(first_root, "existing")
+    make_skill(second_root, "existing")
     first = Skills.from_dir(first_root)
     second = Skills.from_dir(second_root)
     tools = Tools(

@@ -19,6 +19,7 @@ from agenttoolkit.builtins.shell import (
     SandboxLimits,
     SandboxPolicy,
 )
+from agenttoolkit.builtins.shell.command import _format_bytes, run_process
 
 
 def test_policy_normalizes_isolation_paths_and_network(tmp_path: Path) -> None:
@@ -103,6 +104,46 @@ def test_command_result_helpers() -> None:
     timeout = CommandResult("wait", -1, "", "", 1.0, timed_out=True)
     with pytest.raises(CommandExecutionError, match="timed out"):
         timeout.check_returncode()
+
+    assert CommandResult("stdout", 0, "out", "", 0.1).output == "out"
+    assert CommandResult("stderr", 0, "", "err", 0.1).output == "err"
+    assert CommandResult("joined", 0, "out\n", "err", 0.1).output == "out\nerr"
+
+    empty_failure = CommandResult("false", 1, "", "", 0.1)
+    with pytest.raises(CommandExecutionError, match=r"status 1$"):
+        empty_failure.check_returncode()
+
+
+@pytest.mark.parametrize(
+    ("count", "formatted"),
+    [
+        (12, "12 B"),
+        (2 * 1024, "2.0 KB"),
+        (3 * 1024**2, "3.0 MB"),
+        (4 * 1024**3, "4.0 GB"),
+    ],
+)
+def test_output_omission_sizes_are_human_readable(
+    count: int,
+    formatted: str,
+) -> None:
+    assert _format_bytes(count) == formatted
+
+
+@pytest.mark.asyncio
+async def test_run_process_validates_its_direct_contract(tmp_path: Path) -> None:
+    arguments = {
+        "command": "noop",
+        "cwd": tmp_path,
+        "env": None,
+        "stdin": None,
+        "timeout": None,
+        "max_output_bytes": None,
+    }
+    with pytest.raises(ValueError, match="argv must not be empty"):
+        await run_process((), **arguments)
+    with pytest.raises(ValueError, match="timeout must be positive"):
+        await run_process((sys.executable,), **(arguments | {"timeout": 0}))
 
 
 @pytest.mark.asyncio

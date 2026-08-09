@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -9,32 +10,10 @@ from agenttoolkit import (
 )
 
 
-def make_skill(
-    root: Path,
-    *,
-    name: str = "internet-research",
-    description: str = "Research current sources.",
-) -> Path:
-    directory = root / name
-    directory.mkdir(parents=True)
-    (directory / "SKILL.md").write_text(
-        (
-            "---\n"
-            f"name: {name}\n"
-            f"description: {description}\n"
-            "license: Apache-2.0\n"
-            "metadata:\n"
-            "  author: test\n"
-            '  version: "1.0"\n'
-            "---\n"
-            "# Research\n\nUse the bundled workflow.\n"
-        ),
-        encoding="utf-8",
-    )
-    return directory
-
-
-def test_discovers_and_parses_skill_metadata(tmp_path: Path) -> None:
+def test_discovers_and_parses_skill_metadata(
+    tmp_path: Path,
+    make_skill: Callable[..., Path],
+) -> None:
     directory = make_skill(tmp_path)
 
     skills = Skills.from_dir(tmp_path)
@@ -48,6 +27,7 @@ def test_discovers_and_parses_skill_metadata(tmp_path: Path) -> None:
 
 def test_progressive_load_lists_resources_without_reading_them(
     tmp_path: Path,
+    make_skill: Callable[..., Path],
 ) -> None:
     directory = make_skill(tmp_path)
     references = directory / "references"
@@ -65,7 +45,10 @@ def test_progressive_load_lists_resources_without_reading_them(
     assert "Loaded later." not in loaded.instructions
 
 
-def test_render_prompt_contains_only_name_and_description(tmp_path: Path) -> None:
+def test_render_prompt_contains_only_name_and_description(
+    tmp_path: Path,
+    make_skill: Callable[..., Path],
+) -> None:
     make_skill(tmp_path)
 
     prompt = Skills.from_dir(tmp_path).render_prompt()
@@ -75,7 +58,19 @@ def test_render_prompt_contains_only_name_and_description(tmp_path: Path) -> Non
     assert "Use the bundled workflow" not in prompt
 
 
-def test_load_describes_binary_resources_without_reading_them(tmp_path: Path) -> None:
+def test_empty_skill_registry_renders_an_empty_prompt(tmp_path: Path) -> None:
+    skills = Skills.from_dir(tmp_path)
+
+    assert skills.render_prompt() == ""
+    assert skills.size == 0
+    assert skills.revision == 0
+    assert skills.directories == ()
+
+
+def test_load_describes_binary_resources_without_reading_them(
+    tmp_path: Path,
+    make_skill: Callable[..., Path],
+) -> None:
     directory = make_skill(tmp_path)
     (directory / "logo.bin").write_bytes(b"\xff\x00")
     loaded = Skills.from_dir(tmp_path).load("internet-research")
@@ -84,14 +79,20 @@ def test_load_describes_binary_resources_without_reading_them(tmp_path: Path) ->
     assert loaded.directory / loaded.resources[0] == directory / "logo.bin"
 
 
-def test_invalid_skill_name_is_rejected(tmp_path: Path) -> None:
+def test_invalid_skill_name_is_rejected(
+    tmp_path: Path,
+    make_skill: Callable[..., Path],
+) -> None:
     make_skill(tmp_path, name="invalid--name")
 
     with pytest.raises(ValueError, match="without leading"):
         Skills.from_dir(tmp_path)
 
 
-def test_refresh_registers_new_skills(tmp_path: Path) -> None:
+def test_refresh_registers_new_skills(
+    tmp_path: Path,
+    make_skill: Callable[..., Path],
+) -> None:
     make_skill(tmp_path)
     skills = Skills.from_dir(tmp_path)
     new_directory = make_skill(
@@ -110,7 +111,29 @@ def test_refresh_registers_new_skills(tmp_path: Path) -> None:
     assert changes.removed == ()
 
 
-def test_refresh_rebuilds_registry_from_disk(tmp_path: Path) -> None:
+def test_refresh_unregisters_removed_skills(
+    tmp_path: Path,
+    make_skill: Callable[..., Path],
+) -> None:
+    directory = make_skill(tmp_path)
+    skills = Skills.from_dir(tmp_path)
+    (directory / "SKILL.md").unlink()
+    directory.rmdir()
+
+    changes = skills.refresh_if_changed()
+
+    assert changes.changed
+    assert changes.revision == 1
+    assert changes.added == ()
+    assert changes.updated == ()
+    assert changes.removed == ("internet-research",)
+    assert skills.names() == []
+
+
+def test_refresh_rebuilds_registry_from_disk(
+    tmp_path: Path,
+    make_skill: Callable[..., Path],
+) -> None:
     directory = make_skill(tmp_path)
     skills = Skills.from_dir(tmp_path)
     (directory / "SKILL.md").write_text(
@@ -131,7 +154,10 @@ def test_refresh_rebuilds_registry_from_disk(tmp_path: Path) -> None:
     assert changes.updated == ("internet-research",)
 
 
-def test_refresh_if_changed_skips_unchanged_documents(tmp_path: Path) -> None:
+def test_refresh_if_changed_skips_unchanged_documents(
+    tmp_path: Path,
+    make_skill: Callable[..., Path],
+) -> None:
     make_skill(tmp_path)
     skills = Skills.from_dir(tmp_path)
 
@@ -143,6 +169,7 @@ def test_refresh_if_changed_skips_unchanged_documents(tmp_path: Path) -> None:
 
 def test_load_exposes_script_path_for_a_general_process_runner(
     tmp_path: Path,
+    make_skill: Callable[..., Path],
 ) -> None:
     directory = make_skill(tmp_path)
     scripts = directory / "scripts"

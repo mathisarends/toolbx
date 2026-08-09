@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -16,21 +17,6 @@ def skill_source(
     return (
         f"---\nname: {name}\ndescription: {description}\n{extra}---\n{instructions}\n"
     )
-
-
-def make_skill(
-    root: Path,
-    *,
-    name: str = "internet-research",
-    source: str | None = None,
-) -> Path:
-    directory = root / name
-    directory.mkdir(parents=True)
-    (directory / "SKILL.md").write_text(
-        source or skill_source(name=name),
-        encoding="utf-8",
-    )
-    return directory
 
 
 @pytest.mark.parametrize(
@@ -65,6 +51,7 @@ def test_invalid_skill_documents_have_actionable_errors(
     tmp_path: Path,
     source: str,
     message: str,
+    make_skill: Callable[..., Path],
 ) -> None:
     skill_file = make_skill(tmp_path, source=source) / "SKILL.md"
 
@@ -76,6 +63,7 @@ def test_invalid_skill_documents_have_actionable_errors(
 def test_skill_names_follow_portable_directory_rules(
     tmp_path: Path,
     name: str,
+    make_skill: Callable[..., Path],
 ) -> None:
     skill_file = make_skill(tmp_path, name=name) / "SKILL.md"
 
@@ -83,7 +71,10 @@ def test_skill_names_follow_portable_directory_rules(
         parse_skill(skill_file)
 
 
-def test_skill_name_must_match_its_directory(tmp_path: Path) -> None:
+def test_skill_name_must_match_its_directory(
+    tmp_path: Path,
+    make_skill: Callable[..., Path],
+) -> None:
     skill_file = (
         make_skill(
             tmp_path,
@@ -97,7 +88,10 @@ def test_skill_name_must_match_its_directory(tmp_path: Path) -> None:
         parse_skill(skill_file)
 
 
-def test_skill_text_fields_enforce_documented_limits(tmp_path: Path) -> None:
+def test_skill_text_fields_enforce_documented_limits(
+    tmp_path: Path,
+    make_skill: Callable[..., Path],
+) -> None:
     too_long_description = skill_source(description="x" * 1025)
     description_file = (
         make_skill(
@@ -141,6 +135,7 @@ def test_skills_reject_empty_missing_and_file_roots(tmp_path: Path) -> None:
 def test_duplicate_skill_uses_later_root_and_logs_warning(
     tmp_path: Path,
     caplog: pytest.LogCaptureFixture,
+    make_skill: Callable[..., Path],
 ) -> None:
     first = tmp_path / "first"
     second = tmp_path / "second"
@@ -158,7 +153,10 @@ def test_duplicate_skill_uses_later_root_and_logs_warning(
     assert "overrides skill" in caplog.text
 
 
-def test_missing_skill_lists_available_names(tmp_path: Path) -> None:
+def test_missing_skill_lists_available_names(
+    tmp_path: Path,
+    make_skill: Callable[..., Path],
+) -> None:
     skills = Skills.from_dir(make_skill(tmp_path).parent)
 
     with pytest.raises(
@@ -168,7 +166,10 @@ def test_missing_skill_lists_available_names(tmp_path: Path) -> None:
         skills.get("missing")
 
 
-def test_load_refreshes_instructions_from_disk(tmp_path: Path) -> None:
+def test_load_refreshes_instructions_from_disk(
+    tmp_path: Path,
+    make_skill: Callable[..., Path],
+) -> None:
     directory = make_skill(tmp_path)
     skills = Skills.from_dir(tmp_path)
     (directory / "SKILL.md").write_text(
@@ -181,7 +182,10 @@ def test_load_refreshes_instructions_from_disk(tmp_path: Path) -> None:
     assert loaded.instructions.endswith("Use the updated workflow.")
 
 
-def test_load_rejects_skill_renamed_after_discovery(tmp_path: Path) -> None:
+def test_load_rejects_skill_renamed_after_discovery(
+    tmp_path: Path,
+    make_skill: Callable[..., Path],
+) -> None:
     directory = make_skill(tmp_path)
     skills = Skills.from_dir(tmp_path)
     (directory / "SKILL.md").write_text(
@@ -195,6 +199,7 @@ def test_load_rejects_skill_renamed_after_discovery(tmp_path: Path) -> None:
 
 def test_refresh_keeps_previous_registry_when_discovery_fails(
     tmp_path: Path,
+    make_skill: Callable[..., Path],
 ) -> None:
     make_skill(tmp_path)
     skills = Skills.from_dir(tmp_path)

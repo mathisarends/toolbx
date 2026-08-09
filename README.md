@@ -14,6 +14,7 @@ it is a building block, not a framework.
 - [Installation](#installation)
 - [Quickstart](#quickstart)
 - [Defining tools](#defining-tools)
+- [Structured-output tools](#structured-output-tools)
 - [Dependency injection with `ToolContext`](#dependency-injection-with-toolcontext)
 - [Conditional availability and descriptions](#conditional-availability-and-descriptions)
 - [Driving an agent loop](#driving-an-agent-loop)
@@ -186,6 +187,54 @@ type checker; a plain string is rendered as-is.
 Prefer `tools.action(...)` for registering tools. Direct registration is an
 internal implementation detail.
 
+## Structured-output tools
+
+Some providers select an action by asking the model for a structured response
+rather than a provider-specific tool call. Use `StructuredOutputTools` in
+that case. It creates one Pydantic model per available action, so the model
+can choose an action while also returning fields shared by every response.
+
+This is useful for browser-use-style loops, where an action needs to travel
+with additional output such as the model's reasoning, a page summary, or a
+request identifier:
+
+```python
+from pydantic import BaseModel, Field
+
+from agenttoolkit import StructuredOutputTools
+
+
+class BrowserResponse(BaseModel):
+    reasoning: str = Field(description="Why this action is the next step")
+    page_summary: str = Field(description="What the model observed on the page")
+
+
+tools = StructuredOutputTools()
+
+
+@tools.action("Open a URL in the browser")
+async def navigate(url: str) -> None: ...
+
+
+[NavigateAction] = tools.create_action_model(base_model=BrowserResponse)
+
+# Give NavigateAction to the LLM as its structured-output model.
+response = NavigateAction.model_validate(
+    {
+        "reasoning": "The requested page has not been opened yet.",
+        "page_summary": "No page is open.",
+        "navigate": {"url": "https://example.com"},
+    }
+)
+await tools.execute("navigate", response.navigate.model_dump())
+```
+
+`create_action_model()` returns only actions available in the active context.
+Pass `include_actions=[...]` to limit the choices, or `context=...` to derive
+them for a particular request. `StructuredOutputTools` shares registration,
+availability, middleware, execution, and merging with `Tools`; it differs
+only in how actions are presented to the model.
+
 ## Dependency injection with `ToolContext`
 
 `ToolContext` carries application services that tools need but that should
@@ -265,25 +314,6 @@ openai_schemas = tools.get_schema(ToolSchemaFormat.OPENAI)
 anthropic_schemas = tools.get_schema(ToolSchemaFormat.ANTHROPIC)
 
 result = await tools.execute("search", {"query": "tool middleware"}, context=context)
-```
-
-For providers that express tool selection as structured output, use the
-separate `StructuredOutputTools` representation. It shares registration,
-context, middleware, execution, and merging with `Tools`, but exposes action
-models instead of provider tool-call schemas:
-
-```python
-from agenttoolkit import StructuredOutputTools
-
-tools = StructuredOutputTools()
-
-
-@tools.action("Add two integers")
-def add(a: int, b: int) -> int:
-    return a + b
-
-
-[AddAction] = tools.create_action_model()
 ```
 
 Code that only registers or executes tools, independent of how they are shown

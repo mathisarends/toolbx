@@ -8,6 +8,7 @@ from agenttoolkit import (
     CallLoggingMiddleware,
     ErrorBoundaryMiddleware,
     Inject,
+    StructuredOutputTools,
     ToolContext,
     Tools,
     ToolSchemaFormat,
@@ -105,7 +106,7 @@ def test_action_models_support_structured_output_and_a_custom_base() -> None:
     class StructuredAction(BaseModel):
         request_id: str = "generated"
 
-    tools = Tools()
+    tools = StructuredOutputTools()
 
     @tools.action("Search the documentation", params=SearchParams)
     def search(params: SearchParams) -> None:
@@ -131,6 +132,11 @@ def test_action_models_support_structured_output_and_a_custom_base() -> None:
 
     with pytest.raises(ValidationError, match="extra_forbidden"):
         models[0].model_validate({"search": {"query": "tools"}, "unexpected": True})
+
+
+def test_tool_representations_expose_only_their_own_interface() -> None:
+    assert not hasattr(Tools(), "create_action_model")
+    assert not hasattr(StructuredOutputTools(), "get_schema")
 
 
 def test_context_controls_availability_and_description() -> None:

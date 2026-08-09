@@ -14,7 +14,9 @@ from .middleware import (
     ToolMiddleware,
 )
 from .models import Tool, ToolMetadata, ToolSchemaFormat
+from .registry import ToolRegistry
 from .schema import ToolSchema, build_schema
+from .structured import StructuredOutputTools
 from .tools import Tools
 
 __all__ = [
@@ -22,6 +24,7 @@ __all__ = [
     "ErrorBoundaryMiddleware",
     "Inject",
     "SkillRefreshMiddleware",
+    "StructuredOutputTools",
     "Tool",
     "ToolAvailability",
     "ToolCall",
@@ -29,6 +32,7 @@ __all__ = [
     "ToolDescription",
     "ToolMetadata",
     "ToolMiddleware",
+    "ToolRegistry",
     "ToolSchema",
     "ToolSchemaFormat",
     "Tools",

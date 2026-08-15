@@ -24,32 +24,22 @@ from agenttoolkit.builtins.shell.policy import SandboxPolicy
 type DockerNetworkMode = Literal["bridge", "host"]
 
 
-@dataclass(frozen=True, slots=True, init=False)
+@dataclass(frozen=True, slots=True)
 class BindMount:
     source: Path
     target: PurePosixPath
-    writable: bool
+    writable: bool = False
 
-    def __init__(
-        self,
-        source: str | os.PathLike[str],
-        target: str | PurePosixPath,
-        *,
-        writable: bool = False,
-    ) -> None:
-        normalized_source = Path(source).expanduser().resolve(strict=False)
-        normalized_target = PurePosixPath(target)
+    def __post_init__(self) -> None:
         if (
-            not normalized_target.is_absolute()
-            or normalized_target == PurePosixPath("/")
-            or ".." in normalized_target.parts
+            not self.target.is_absolute()
+            or self.target == PurePosixPath("/")
+            or ".." in self.target.parts
         ):
             raise ValueError(
-                f"mount target must be an absolute container path below '/': {target!r}"
+                "mount target must be an absolute container path below '/': "
+                f"{str(self.target)!r}"
             )
-        object.__setattr__(self, "source", normalized_source)
-        object.__setattr__(self, "target", normalized_target)
-        object.__setattr__(self, "writable", writable)
 
     @classmethod
     def read_only(
@@ -57,7 +47,7 @@ class BindMount:
         source: str | os.PathLike[str],
         target: str | PurePosixPath,
     ) -> Self:
-        return cls(source, target)
+        return cls(_resolve_source(source), PurePosixPath(target))
 
     @classmethod
     def read_write(
@@ -65,7 +55,11 @@ class BindMount:
         source: str | os.PathLike[str],
         target: str | PurePosixPath,
     ) -> Self:
-        return cls(source, target, writable=True)
+        return cls(_resolve_source(source), PurePosixPath(target), writable=True)
+
+
+def _resolve_source(source: str | os.PathLike[str]) -> Path:
+    return Path(source).expanduser().resolve(strict=False)
 
 
 _KEEP_ALIVE_COMMAND = "while :; do sleep 3600; done"

@@ -4,100 +4,14 @@ import re
 import stat
 import tempfile
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
 from pathlib import Path, PurePath, PurePosixPath
-from typing import Protocol, runtime_checkable
 
-
-class WorkspaceError(Exception):
-    pass
-
-
-class PathOutsideWorkspaceError(WorkspaceError, ValueError):
-    pass
-
-
-class FileTooLargeError(WorkspaceError):
-    pass
-
-
-class EditError(WorkspaceError, ValueError):
-    pass
-
-
-@dataclass(frozen=True, slots=True)
-class Entry:
-    path: str
-    is_dir: bool
-    is_symlink: bool
-    size: int | None = None
-    modified: float | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class GrepMatch:
-    path: str
-    line_number: int
-    line: str
-    context_before: tuple[str, ...] = ()
-    context_after: tuple[str, ...] = ()
-
-
-@runtime_checkable
-class Workspace(Protocol):
-    @property
-    def root(self) -> Path: ...
-
-    async def read_file(
-        self,
-        path: str | os.PathLike[str],
-        *,
-        encoding: str | None = None,
-    ) -> str: ...
-
-    async def write_file(
-        self,
-        path: str | os.PathLike[str],
-        content: str,
-        *,
-        encoding: str | None = None,
-        create_parents: bool = True,
-    ) -> None: ...
-
-    async def edit_file(
-        self,
-        path: str | os.PathLike[str],
-        old: str,
-        new: str,
-        *,
-        replace_all: bool = False,
-        encoding: str | None = None,
-    ) -> int: ...
-
-    async def glob(self, pattern: str) -> Sequence[Entry]: ...
-
-    async def grep(
-        self,
-        pattern: str,
-        *,
-        glob: str | None = None,
-        case_sensitive: bool = True,
-        context_lines: int = 0,
-        max_matches: int | None = None,
-    ) -> Sequence[GrepMatch]: ...
-
-    async def list_dir(
-        self,
-        path: str | os.PathLike[str] = ".",
-        *,
-        recursive: bool = False,
-        limit: int | None = None,
-    ) -> Sequence[Entry]: ...
-
-    async def stat(
-        self,
-        path: str | os.PathLike[str],
-    ) -> Entry | None: ...
+from agenttoolkit.builtins.fs.errors import (
+    EditError,
+    FileTooLargeError,
+    PathOutsideWorkspaceError,
+)
+from agenttoolkit.builtins.fs.models import Entry, GrepMatch
 
 
 class LocalWorkspace:

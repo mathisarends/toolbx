@@ -1,13 +1,12 @@
-from .workspace import (
+from .errors import (
     EditError,
-    Entry,
     FileTooLargeError,
-    GrepMatch,
-    LocalWorkspace,
     PathOutsideWorkspaceError,
-    Workspace,
     WorkspaceError,
 )
+from .local import LocalWorkspace
+from .models import Entry, GrepMatch
+from .ports import Workspace
 
 __all__ = [
     "EditError",

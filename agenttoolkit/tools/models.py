@@ -40,7 +40,7 @@ class Tool:
     def __init__(
         self,
         name: str,
-        description: str | ToolDescription,
+        description: str | ToolDescription | None,
         fn: Callable[..., object],
         *,
         param_model: type[BaseModel] | None = None,
@@ -52,7 +52,7 @@ class Tool:
         if not name:
             raise ValueError("Tool name cannot be empty")
         self.name = name
-        self.description = description
+        self.description = "" if description is None else description
         self.fn = fn
         self.param_model = param_model
         self._metadata = metadata or ToolMetadata()

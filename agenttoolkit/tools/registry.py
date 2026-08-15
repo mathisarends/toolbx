@@ -27,7 +27,7 @@ class ToolRegistry:
 
     def action[ParamsT: BaseModel, **CallT, ResultT](
         self,
-        description: str | ToolDescription,
+        description: str | ToolDescription | None = None,
         name: str | None = None,
         *,
         params: type[ParamsT] | None = None,

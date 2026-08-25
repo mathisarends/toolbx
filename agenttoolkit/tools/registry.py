@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Mapping, Sequence
-from typing import Any
+from collections.abc import AsyncGenerator, Callable, Iterator, Mapping, Sequence
+from contextlib import asynccontextmanager
+from types import TracebackType
+from typing import Any, Self
 
 from pydantic import BaseModel
 
+from agenttoolkit.dependency import DependencyContainer, DependencyProvider, Scope
 from agenttoolkit.tools.arguments import resolve_arguments
 from agenttoolkit.tools.binding import ToolAvailability, ToolDescription
 from agenttoolkit.tools.context import ToolContext
@@ -18,12 +21,43 @@ class ToolRegistry:
     def __init__(
         self,
         *,
+        container: DependencyContainer | None = None,
+        dependencies: Sequence[DependencyProvider] | None = None,
         context: ToolContext | None = None,
         middleware: Sequence[ToolMiddleware] | None = None,
     ) -> None:
+        if container is not None and dependencies is not None:
+            raise ValueError("Pass either container or dependencies, not both")
         self._tools: dict[str, Tool] = {}
+        self._container = (
+            DependencyContainer(*dependencies)
+            if dependencies is not None
+            else container
+        )
         self._context = context
         self._handler = compose(middleware or (), self._invoke)
+
+    async def __aenter__(self) -> Self:
+        if self._container is not None:
+            await self._container.__aenter__()
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool | None:
+        if self._container is None:
+            return None
+        return await self._container.__aexit__(exc_type, exc_value, traceback)
+
+    @asynccontextmanager
+    async def scope(self, scope: Scope) -> AsyncGenerator[Self]:
+        if self._container is None:
+            raise RuntimeError("Tools has no dependency container")
+        async with self._container.scope(scope):
+            yield self
 
     def set_context(self, context: ToolContext | None) -> None:
         """Set the default context used for schemas and tool execution."""
@@ -84,14 +118,17 @@ class ToolRegistry:
         *,
         context: ToolContext | None = None,
     ) -> object:
-        return await self._handler(
-            ToolCall(
-                name=name,
-                raw_args=dict(arguments or {}),
-                context=self._context if context is None else context,
-                tool=self._tools.get(name),
-            )
+        call = ToolCall(
+            name=name,
+            raw_args=dict(arguments or {}),
+            context=self._context if context is None else context,
+            tool=self._tools.get(name),
+            container=self._container,
         )
+        if self._container is None:
+            return await self._handler(call)
+        async with self._container.scope(Scope.CALL):
+            return await self._handler(call)
 
     def merge(self, other: ToolRegistry, *, replace: bool = False) -> None:
         for tool in other:
@@ -114,5 +151,5 @@ class ToolRegistry:
             raise LookupError(f"Unknown tool '{call.name}'. Available: {available}")
 
         params = tool.input_model.model_validate(call.raw_args)
-        arguments = resolve_arguments(tool, params, call.context)
+        arguments = await resolve_arguments(tool, params, call.container, call.context)
         return await tool.execute(arguments)

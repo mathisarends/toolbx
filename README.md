@@ -15,7 +15,7 @@ it is a building block, not a framework.
 - [Quickstart](#quickstart)
 - [Defining tools](#defining-tools)
 - [Structured-output tools](#structured-output-tools)
-- [Dependency injection with `ToolContext`](#dependency-injection-with-toolcontext)
+- [Scoped dependency injection](#scoped-dependency-injection)
 - [Conditional availability and descriptions](#conditional-availability-and-descriptions)
 - [Driving an agent loop](#driving-an-agent-loop)
 - [Results and errors](#results-and-errors)
@@ -33,8 +33,8 @@ it is a building block, not a framework.
 - Runtime metadata (`effects`, `status`, `tags`, custom fields) and an
   `requires_approval` flag, kept out of the model-facing schema but readable
   by the host loop that dispatches calls.
-- Context-based dependency injection (`Inject[T]`) so tools can receive
-  application services without the model ever seeing them.
+- Scoped dependency injection (`Inject[T]`) with validated dependency graphs,
+  lifecycle hooks, and `APP`, `TURN`, and `CALL` lifetimes.
 - Conditional tool availability and dynamic, context-aware descriptions.
 - Sync and async tool execution behind a single async API.
 - A composable, opt-in middleware pipeline with provided error-boundary and
@@ -71,11 +71,13 @@ from pydantic import BaseModel, Field
 
 from agenttoolkit import (
     CallLoggingMiddleware,
+    DependencyProvider,
     ErrorBoundaryMiddleware,
     Inject,
-    ToolContext,
+    Scope,
     Tools,
     ToolSchemaFormat,
+    provide,
 )
 
 
@@ -89,8 +91,14 @@ class SearchClient:
         return [query] * limit
 
 
+class Dependencies(DependencyProvider):
+    @provide(scope=Scope.APP)
+    def search_client(self) -> SearchClient:
+        return SearchClient()
+
+
 tools = Tools(
-    context=ToolContext(SearchClient()),
+    dependencies=[Dependencies()],
     middleware=(
         ErrorBoundaryMiddleware(),
         CallLoggingMiddleware(),
@@ -110,9 +118,10 @@ async def search(params: SearchParams, client: Inject[SearchClient]) -> list[str
 schema = tools.get_schema(ToolSchemaFormat.ANTHROPIC)
 
 # 2. The model asks to call "search" with {"query": "tool middleware"}.
-result: object = await tools.execute(
-    "search", {"query": "tool middleware"}
-)
+async with tools:
+    result: object = await tools.execute(
+        "search", {"query": "tool middleware"}
+    )
 
 # 3. Serialize the value and feed it back to the model.
 ```
@@ -234,37 +243,64 @@ them for a particular request. `StructuredOutputTools` shares registration,
 availability, middleware, execution, and merging with `Tools`; it differs
 only in how tools are presented to the model.
 
-## Dependency injection with `ToolContext`
+## Scoped dependency injection
 
-`ToolContext` carries application services that tools need but that should
-never appear in the model-facing schema. Wrap a parameter in `Inject[T]` and
-it is resolved from context at call time instead of being part of the
-argument schema:
-
-```python
-context = ToolContext(SearchClient(), some_other_service)
-tools = Tools(context=context)
-```
-
-The context is known up front, so it belongs in the constructor. Dependencies
-that only materialise later go through `context.provide(...)` on the instance
-you already handed over; a context that differs per request goes through the
-`context=` argument on `execute(...)` and the representation-specific
-`get_schema(...)` or `create_tool_models(...)`, which leaves the registry
-context untouched.
-
-`ToolContext.resolve(T)` returns the most recently provided instance of type
-`T` (or a subclass), searching in reverse insertion order. Useful mutators:
+Dependencies are declared on `DependencyProvider` classes. The container
+validates missing definitions, duplicates, cycles, and invalid lifetime
+relationships when it is constructed. `Inject[T]` parameters are resolved at
+execution time and never appear in the model-facing schema.
 
 ```python
-context.provide(extra_service)  # append more dependencies
-context.without(SearchClient)   # drop instances of a type
-context.clear()                 # remove everything
+from collections.abc import AsyncIterator
+
+from agenttoolkit import (
+    DependencyProvider,
+    Inject,
+    Scope,
+    Tools,
+    provide,
+)
+
+
+class Dependencies(DependencyProvider):
+    @provide(scope=Scope.APP)
+    def client(self) -> SearchClient:
+        return SearchClient()
+
+    @provide(scope=Scope.TURN)
+    def turn_state(self) -> TurnState:
+        return TurnState()
+
+    @provide  # CALL is the default
+    async def connection(self) -> AsyncIterator[Connection]:
+        connection = await connect()
+        try:
+            yield connection
+        finally:
+            await connection.close()
+
+
+tools = Tools(dependencies=[Dependencies()])
+
+
+@tools.tool("Search")
+async def search(query: str, client: Inject[SearchClient]) -> list[str]:
+    return await client.search(query)
 ```
 
-If an `Inject[T]` parameter has no default and no matching dependency is
-found in context, execution returns an agent-readable failure rather than
-silently passing `None`.
+`APP` lives for the tools context, `TURN` is opened explicitly around an
+agent turn, and `CALL` is opened automatically by `tools.execute()`:
+
+```python
+async with tools:
+    async with tools.scope(Scope.TURN):
+        await tools.execute("search", {"query": "dependency injection"})
+```
+
+A tool that needs a `TURN` dependency fails clearly when no turn scope is
+active. Factory methods may be synchronous, asynchronous, generators, or
+async generators. Generator cleanup runs when its owning scope exits, even
+after an error. `Tools` creates and owns the dependency container internally.
 
 ## Conditional availability and descriptions
 

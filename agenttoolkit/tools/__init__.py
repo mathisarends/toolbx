@@ -1,3 +1,5 @@
+from agenttoolkit.dependency import DependencyProvider, Scope, provide
+
 from .binding import (
     ToolAvailability,
     ToolDescription,
@@ -21,8 +23,10 @@ from .tools import Tools
 
 __all__ = [
     "CallLoggingMiddleware",
+    "DependencyProvider",
     "ErrorBoundaryMiddleware",
     "Inject",
+    "Scope",
     "SkillRefreshMiddleware",
     "StructuredOutputTools",
     "Tool",
@@ -38,6 +42,7 @@ __all__ = [
     "Tools",
     "build_schema",
     "description_from_context",
+    "provide",
     "provided",
     "requires",
 ]

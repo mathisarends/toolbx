@@ -1,3 +1,4 @@
+from .dependency import DependencyProvider, Scope, provide
 from .output import OutputBudget
 from .skills import (
     LoadedSkill,
@@ -31,10 +32,12 @@ from .tools import (
 
 __all__ = [
     "CallLoggingMiddleware",
+    "DependencyProvider",
     "ErrorBoundaryMiddleware",
     "Inject",
     "LoadedSkill",
     "OutputBudget",
+    "Scope",
     "Skill",
     "SkillChanges",
     "SkillRefreshMiddleware",
@@ -54,6 +57,7 @@ __all__ = [
     "build_schema",
     "description_from_context",
     "parse_skill",
+    "provide",
     "provided",
     "requires",
 ]

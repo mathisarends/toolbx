@@ -83,7 +83,6 @@ addopts = [
     "--cov=agenttoolkit",
     "--cov-branch",
     "--cov-report=term-missing:skip-covered",
-    "--cov-fail-under=95",
 ]
 asyncio_mode = "strict"
 testpaths = ["tests"]

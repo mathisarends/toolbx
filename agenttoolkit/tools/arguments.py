@@ -3,13 +3,15 @@ from typing import Annotated, Any, get_args, get_origin, get_type_hints
 
 from pydantic import BaseModel
 
+from agenttoolkit.dependency import DependencyContainer
 from agenttoolkit.tools.context import _INJECT_MARKER, ToolContext
 from agenttoolkit.tools.models import Tool
 
 
-def resolve_arguments(
+async def resolve_arguments(
     tool: Tool,
     params: BaseModel,
+    container: DependencyContainer | None,
     context: ToolContext | None,
 ) -> dict[str, Any]:
     kwargs = _tool_arguments(tool, params)
@@ -20,8 +22,15 @@ def resolve_arguments(
         if annotation is None or not _is_injected(annotation):
             continue
         expected_type = get_args(annotation)[0]
-        dependency = context.resolve(expected_type) if context is not None else None
-        if dependency is None:
+        dependency = None
+        found = False
+        if container is not None and container.has(expected_type):
+            dependency = await container.get(expected_type)
+            found = True
+        elif context is not None:
+            dependency = context.resolve(expected_type)
+            found = dependency is not None
+        if not found:
             if parameter.default is inspect.Parameter.empty:
                 type_name = getattr(expected_type, "__name__", repr(expected_type))
                 raise ValueError(

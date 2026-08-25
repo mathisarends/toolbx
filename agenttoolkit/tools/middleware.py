@@ -4,6 +4,7 @@ from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from agenttoolkit.dependency import DependencyContainer
 from agenttoolkit.skills import Skills
 from agenttoolkit.tools.context import ToolContext
 from agenttoolkit.tools.models import Tool
@@ -17,6 +18,7 @@ class ToolCall:
     raw_args: dict[str, Any]
     context: ToolContext | None = None
     tool: Tool | None = None
+    container: DependencyContainer | None = None
 
 
 type ToolHandler = Callable[[ToolCall], Awaitable[object]]
@@ -69,7 +71,12 @@ class SkillRefreshMiddleware(ToolMiddleware):
             return await next(call)
         finally:
             if call.tool is not None:
-                skills = None if call.context is None else call.context.resolve(Skills)
+                if call.container is not None and call.container.has(Skills):
+                    skills = await call.container.get(Skills)
+                else:
+                    skills = (
+                        None if call.context is None else call.context.resolve(Skills)
+                    )
                 if skills is not None:
                     try:
                         skills.refresh_if_changed()

@@ -1,7 +1,14 @@
 import asyncio
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
-from agenttoolkit import Inject, ToolContext, Tools
+from agenttoolkit import (
+    DependencyProvider,
+    Inject,
+    Scope,
+    Tools,
+    provide,
+)
 
 
 @dataclass
@@ -9,19 +16,33 @@ class SearchClient:
     prefix: str
 
 
-tools = Tools(context=ToolContext(SearchClient(prefix="kb:")))
+class Dependencies(DependencyProvider):
+    @provide(scope=Scope.APP)
+    def search_client(self) -> SearchClient:
+        return SearchClient(prefix="kb:")
+
+    @provide
+    async def request_id(self) -> AsyncIterator[str]:
+        yield "request-1"
 
 
-# `Inject[SearchClient]` is resolved from the ToolContext at call time and
-# never shows up in the tool's LLM-facing schema — only `query` does.
+tools = Tools(dependencies=[Dependencies()])
+
+
+# Dependencies are resolved from the container and omitted from the schema.
 @tools.tool("Search the knowledge base")
-def search(query: str, client: Inject[SearchClient]) -> str:
-    return f"{client.prefix}{query}"
+def search(
+    query: str,
+    client: Inject[SearchClient],
+    request_id: Inject[str],
+) -> str:
+    return f"{request_id}:{client.prefix}{query}"
 
 
 async def main() -> None:
     print(tools.get_schema()[0].parameters)
-    result = await tools.execute("search", {"query": "agenttoolkit"})
+    async with tools:
+        result = await tools.execute("search", {"query": "agenttoolkit"})
     print(result)
 
 

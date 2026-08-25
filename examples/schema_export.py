@@ -12,7 +12,7 @@ class SearchParams(BaseModel):
     limit: int = Field(default=10, ge=1)
 
 
-@tools.register("Search the documentation", params=SearchParams)
+@tools.tool("Search the documentation")
 def search(params: SearchParams) -> None:
     pass
 

@@ -17,7 +17,7 @@ class AgentResponse(BaseModel):
 tools = StructuredOutputTools()
 
 
-@tools.register("Multiply two integers", params=MultiplyParams)
+@tools.tool("Multiply two integers")
 def multiply(params: MultiplyParams) -> int:
     return params.left * params.right
 

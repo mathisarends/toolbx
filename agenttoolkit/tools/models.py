@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from agenttoolkit.tools.binding import ToolAvailability, ToolDescription
 from agenttoolkit.tools.context import ToolContext
-from agenttoolkit.tools.schema import ToolSchema, _schema_model
+from agenttoolkit.tools.schema import ToolSchema, _infer_param_model, _schema_model
 
 
 class ToolSchemaFormat(StrEnum):
@@ -54,11 +54,11 @@ class Tool:
         self.name = name
         self.description = "" if description is None else description
         self.fn = fn
-        self.param_model = param_model
+        self.param_model = param_model or _infer_param_model(fn)
         self._metadata = metadata or ToolMetadata()
         self.requires_approval = requires_approval
         self.available_when = available_when
-        self.input_model = _schema_model(fn, param_model=param_model)
+        self.input_model = _schema_model(fn, param_model=self.param_model)
         self.parameters = (
             deepcopy(dict(parameters))
             if parameters is not None

@@ -32,7 +32,7 @@ tools = Tools(
 )
 
 
-@tools.register("Get the current date and time")
+@tools.tool("Get the current date and time")
 def get_current_time() -> str:
     return dt.datetime.now().isoformat()
 
@@ -42,9 +42,8 @@ class AddParams(BaseModel):
     b: float = Field(description="Second addend")
 
 
-@tools.register(
+@tools.tool(
     "Add two numbers together",
-    params=AddParams,
     status=lambda params: f"Adding {params.a} + {params.b}",
 )
 def add(params: AddParams) -> float:
@@ -53,14 +52,14 @@ def add(params: AddParams) -> float:
 
 # 3. Dependency resolved from the ToolContext via Inject — never exposed to
 #    the LLM as a schema field, only visible to the function body.
-@tools.register("Get information about the currently logged in user")
+@tools.tool("Get information about the currently logged in user")
 def whoami(user: Inject[UserInfo]) -> str:
     return f"{user.name} (admin={user.is_admin})"
 
 
 # 4. Availability gated on a dependency in the ToolContext — the tool is
 #    hidden from the schema entirely unless the predicate holds.
-@tools.register(
+@tools.tool(
     "Reset the demo counter (admin only)",
     available_when=requires(UserInfo, predicate=lambda user: user.is_admin),
 )
@@ -70,7 +69,7 @@ def reset_counter() -> str:
 
 # 5. Description resolved dynamically from the ToolContext, falling back to
 #    a static description when the dependency isn't provided.
-@tools.register(
+@tools.tool(
     description_from_context(
         UserInfo,
         render=lambda user: f"Greet {user.name} by name",
@@ -82,7 +81,7 @@ def greet(user: Inject[UserInfo]) -> str:
 
 
 # 6. Dangerous tool requiring explicit approval before the agent runs it.
-@tools.register(
+@tools.tool(
     "Delete all demo data (dangerous, needs confirmation)", requires_approval=True
 )
 def delete_all_data() -> str:
@@ -91,7 +90,7 @@ def delete_all_data() -> str:
 
 # 7. Tool that can raise; the built-in error boundary returns the error text
 #    to the agent instead of crashing the loop.
-@tools.register("Divide two numbers; fails on division by zero")
+@tools.tool("Divide two numbers; fails on division by zero")
 def divide(a: float, b: float) -> float:
     return a / b
 
@@ -105,7 +104,7 @@ class WeatherResult(BaseModel):
     temp_c: float
 
 
-@tools.register("Get the current weather for a known city")
+@tools.tool("Get the current weather for a known city")
 def get_weather(city: str) -> WeatherResult:
     temp_c = _KNOWN_CITIES.get(city.lower())
     if temp_c is None:

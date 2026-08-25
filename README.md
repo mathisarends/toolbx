@@ -28,7 +28,7 @@ it is a building block, not a framework.
 
 ## Features
 
-- Registration through a `@tools.register` decorator — no hand-written JSON
+- Registration through a `@tools.tool` decorator — no hand-written JSON
   Schema, for either plain function signatures or Pydantic models.
 - Runtime metadata (`effects`, `status`, `tags`, custom fields) and an
   `requires_approval` flag, kept out of the model-facing schema but readable
@@ -98,9 +98,8 @@ tools = Tools(
 )
 
 
-@tools.register(
+@tools.tool(
     "Search the connected knowledge base.",
-    params=SearchParams,
     status=lambda params: f"Searching for {params.query}...",
 )
 async def search(params: SearchParams, client: Inject[SearchClient]) -> list[str]:
@@ -125,12 +124,12 @@ exception is logged.
 
 ## Defining tools
 
-The `@tools.register(...)` decorator is the entire surface most code touches.
-Parameters come from a plain function signature or, for validation and
-richer schemas, a Pydantic model passed as `params=`:
+The `@tools.tool(...)` decorator is the entire surface most code touches.
+Parameters come from the function signature. A sole Pydantic model parameter
+is detected automatically and used directly for validation and JSON Schema:
 
 ```python
-@tools.register("Add two integers.")
+@tools.tool("Add two integers.")
 def add(a: int, b: int) -> int:
     return a + b
 
@@ -140,9 +139,8 @@ class RefundParams(BaseModel):
     amount: float = Field(gt=0, description="Amount to refund, in USD")
 
 
-@tools.register(
+@tools.tool(
     "Issue a refund for an order.",
-    params=RefundParams,
     status=lambda params: (
         f"Refunding {params.amount} for order {params.order_id}..."
     ),
@@ -184,8 +182,9 @@ tool.format_status({"order_id": "o-123", "amount": 20.0})
 A callable `status` gets its field access checked statically by the IDE or
 type checker; a plain string is rendered as-is.
 
-Prefer `tools.register(...)` for registering tools. Direct insertion into the
-registry is an internal implementation detail.
+Use `tools.register(tool)` when you already have a `Tool` object and want to
+register it imperatively. Pass `replace=True` to replace a tool with the same
+name.
 
 ## Structured-output tools
 
@@ -212,7 +211,7 @@ class BrowserResponse(BaseModel):
 tools = StructuredOutputTools()
 
 
-@tools.register("Open a URL in the browser")
+@tools.tool("Open a URL in the browser")
 async def navigate(url: str) -> None: ...
 
 
@@ -277,7 +276,7 @@ compose with `&`, `|`, and `~`:
 from agenttoolkit import provided, requires
 
 
-@tools.register(
+@tools.tool(
     "Issue a refund (admin only).",
     available_when=provided(BillingClient)
     & requires(UserInfo, predicate=lambda user: user.is_admin),
@@ -299,7 +298,7 @@ description = description_from_context(
 )
 
 
-@tools.register(description)
+@tools.tool(description)
 def balance() -> float: ...
 ```
 
@@ -348,7 +347,7 @@ class WeatherResult(BaseModel):
     temp_c: float
 
 
-@tools.register("Get the current weather for a known city")
+@tools.tool("Get the current weather for a known city")
 def get_weather(city: str) -> WeatherResult:
     temp_c = KNOWN_CITIES.get(city.lower())
     if temp_c is None:

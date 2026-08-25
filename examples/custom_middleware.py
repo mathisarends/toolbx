@@ -23,7 +23,7 @@ tools = Tools(
 )
 
 
-@tools.register("Simulate slow work")
+@tools.tool("Simulate slow work")
 async def slow_task() -> str:
     await asyncio.sleep(0.05)
     return "done"

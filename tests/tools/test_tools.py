@@ -9,6 +9,7 @@ from agenttoolkit import (
     ErrorBoundaryMiddleware,
     Inject,
     StructuredOutputTools,
+    Tool,
     ToolContext,
     Tools,
     ToolSchemaFormat,
@@ -27,14 +28,25 @@ class SearchClient:
         self.prefix = prefix
 
 
+def test_register_adds_an_existing_tool_imperatively() -> None:
+    tools = Tools()
+
+    def greet(name: str) -> str:
+        return f"Hello, {name}"
+
+    tool = Tool(name="greet", description="Greet someone", fn=greet)
+
+    assert tools.register(tool) is tool
+    assert tools.get("greet") is tool
+
+
 @pytest.mark.asyncio
-async def test_register_validate_inject_and_execute() -> None:
+async def test_tool_infers_model_validates_injects_and_executes() -> None:
     client = SearchClient("found:")
     tools = Tools(context=ToolContext(client))
 
-    @tools.register(
+    @tools.tool(
         "Search",
-        params=SearchParams,
         tags=["network"],
         metadata={"owner": "knowledge"},
     )
@@ -49,6 +61,7 @@ async def test_register_validate_inject_and_execute() -> None:
 
     assert result == "found:docs:10"
     assert tool is not None
+    assert tool.param_model is SearchParams
     assert tool.tags == frozenset({"network"})
     assert tool.extra["owner"] == "knowledge"
 
@@ -57,7 +70,7 @@ async def test_register_validate_inject_and_execute() -> None:
 async def test_plain_signature_is_validated_and_sync_result_is_returned() -> None:
     tools = Tools(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
 
-    @tools.register("Add numbers")
+    @tools.tool("Add numbers")
     def add(a: int, b: int = 1) -> int:
         return a + b
 
@@ -72,7 +85,7 @@ async def test_plain_signature_is_validated_and_sync_result_is_returned() -> Non
 def test_schema_is_provider_neutral_with_adapters() -> None:
     tools = Tools()
 
-    @tools.register("Search", params=SearchParams)
+    @tools.tool("Search")
     def search(params: SearchParams) -> None:
         pass
 
@@ -94,7 +107,7 @@ def test_schema_is_provider_neutral_with_adapters() -> None:
 def test_annotated_description_is_included_in_callable_schema() -> None:
     tools = Tools()
 
-    @tools.register("Greet")
+    @tools.tool("Greet")
     def greet(name: Annotated[str, "Person to greet"]) -> None:
         pass
 
@@ -108,11 +121,11 @@ def test_tool_models_support_structured_output_and_a_custom_base() -> None:
 
     tools = StructuredOutputTools()
 
-    @tools.register("Search the documentation", params=SearchParams)
+    @tools.tool("Search the documentation")
     def search(params: SearchParams) -> None:
         pass
 
-    @tools.register("Do nothing")
+    @tools.tool("Do nothing")
     def noop() -> None:
         pass
 
@@ -137,7 +150,7 @@ def test_tool_models_support_structured_output_and_a_custom_base() -> None:
 def test_tool_models_respect_contextual_availability() -> None:
     tools = StructuredOutputTools()
 
-    @tools.register("Search", available_when=provided(SearchClient))
+    @tools.tool("Search", available_when=provided(SearchClient))
     def search(query: str) -> None:
         pass
 
@@ -154,7 +167,7 @@ def test_tool_representations_expose_only_their_own_interface() -> None:
 def test_context_controls_availability_and_description() -> None:
     tools = Tools()
 
-    @tools.register(
+    @tools.tool(
         description_from_context(
             SearchClient,
             render=lambda client: f"Search with prefix {client.prefix}",
@@ -180,7 +193,7 @@ async def test_tool_errors_are_logged_and_returned_by_the_boundary(
 ) -> None:
     tools = Tools(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
 
-    @tools.register("Fail internally")
+    @tools.tool("Fail internally")
     def internal_failure() -> None:
         raise RuntimeError("secret")
 
@@ -195,7 +208,7 @@ async def test_tool_errors_are_logged_and_returned_by_the_boundary(
 async def test_tools_do_not_install_an_error_boundary_by_default() -> None:
     tools = Tools()
 
-    @tools.register("Fail internally")
+    @tools.tool("Fail internally")
     def internal_failure() -> None:
         raise RuntimeError("secret")
 
@@ -206,12 +219,12 @@ async def test_tools_do_not_install_an_error_boundary_by_default() -> None:
 def test_duplicate_registration_and_status_validation() -> None:
     tools = Tools()
 
-    @tools.register("First")
+    @tools.tool("First")
     def duplicate() -> None:
         pass
 
     with pytest.raises(ValueError, match="already registered"):
 
-        @tools.register("Second")
+        @tools.tool("Second")
         def duplicate() -> None:
             pass

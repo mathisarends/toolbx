@@ -17,10 +17,9 @@ def register_skill_loader(
 ) -> None:
     root = PurePosixPath(container_root)
 
-    @tools.register(
+    @tools.tool(
         "Load one skill's full instructions, directory, and resource list.",
         name="load_skill",
-        params=LoadSkillParams,
     )
     def load_skill(
         params: LoadSkillParams,

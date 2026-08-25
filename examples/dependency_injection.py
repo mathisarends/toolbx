@@ -14,7 +14,7 @@ tools = Tools(context=ToolContext(SearchClient(prefix="kb:")))
 
 # `Inject[SearchClient]` is resolved from the ToolContext at call time and
 # never shows up in the tool's LLM-facing schema — only `query` does.
-@tools.register("Search the knowledge base")
+@tools.tool("Search the knowledge base")
 def search(query: str, client: Inject[SearchClient]) -> str:
     return f"{client.prefix}{query}"
 

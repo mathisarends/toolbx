@@ -29,7 +29,7 @@ class ToolRegistry:
         """Set the default context used for schemas and tool execution."""
         self._context = context
 
-    def register[ParamsT: BaseModel, **CallT, ResultT](
+    def tool[ParamsT: BaseModel, **CallT, ResultT](
         self,
         description: str | ToolDescription | None = None,
         name: str | None = None,
@@ -48,7 +48,7 @@ class ToolRegistry:
             func: Callable[CallT, ResultT],
         ) -> Callable[CallT, ResultT]:
             function_name = getattr(func, "__name__", type(func).__name__)
-            self._add(
+            self.register(
                 Tool(
                     name=name or function_name,
                     description=description,
@@ -67,7 +67,8 @@ class ToolRegistry:
 
         return decorator
 
-    def _add(self, tool: Tool, *, replace: bool = False) -> Tool:
+    def register(self, tool: Tool, *, replace: bool = False) -> Tool:
+        """Register an existing tool and return it."""
         if tool.name in self._tools and not replace:
             raise ValueError(f"Tool '{tool.name}' already registered")
         self._tools[tool.name] = tool
@@ -94,7 +95,7 @@ class ToolRegistry:
 
     def merge(self, other: ToolRegistry, *, replace: bool = False) -> None:
         for tool in other:
-            self._add(tool, replace=replace)
+            self.register(tool, replace=replace)
 
     def __iter__(self) -> Iterator[Tool]:
         return iter(self._tools.values())

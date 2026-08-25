@@ -14,7 +14,7 @@ tools = Tools()
 
 # The description sent to the LLM changes depending on what's in the
 # ToolContext at schema-generation time, with a static fallback if absent.
-@tools.register(
+@tools.tool(
     description_from_context(
         Project,
         render=lambda project: f"Create a new issue in project '{project.name}'",

@@ -26,7 +26,7 @@ async def test_writing_tool_refreshes_and_returns_new_catalog(
         middleware=[SkillRefreshMiddleware()],
     )
 
-    @tools.register("Write a skill")
+    @tools.tool("Write a skill")
     def write_skill() -> str:
         make_skill(tmp_path, "created")
         return "written"
@@ -50,7 +50,7 @@ async def test_every_tool_refreshes_registry_by_default(
         middleware=[SkillRefreshMiddleware()],
     )
 
-    @tools.register("Write without declaring the effect")
+    @tools.tool("Write without declaring the effect")
     def other_tool() -> str:
         make_skill(tmp_path, "created")
         return "written"
@@ -74,7 +74,7 @@ async def test_invalid_edit_reports_error_and_keeps_active_registry(
         middleware=[SkillRefreshMiddleware()],
     )
 
-    @tools.register("Write an invalid skill")
+    @tools.tool("Write an invalid skill")
     def write_skill() -> str:
         (directory / "SKILL.md").write_text(
             "# Missing frontmatter",
@@ -108,7 +108,7 @@ async def test_failed_writing_tool_still_reports_catalog_update(
         ),
     )
 
-    @tools.register("Write and fail")
+    @tools.tool("Write and fail")
     def write_skill() -> None:
         make_skill(tmp_path, "created")
         raise RuntimeError("command failed")
@@ -123,7 +123,7 @@ async def test_failed_writing_tool_still_reports_catalog_update(
 async def test_context_without_skills_makes_the_middleware_a_no_op() -> None:
     tools = Tools(middleware=[SkillRefreshMiddleware()])
 
-    @tools.register("Write something")
+    @tools.tool("Write something")
     def write_file() -> str:
         return "written"
 
@@ -146,7 +146,7 @@ async def test_per_call_context_selects_the_refreshed_registry(
         middleware=[SkillRefreshMiddleware()],
     )
 
-    @tools.register("Write a skill")
+    @tools.tool("Write a skill")
     def write_skill() -> str:
         make_skill(first_root, "created-in-first")
         make_skill(second_root, "created-in-second")

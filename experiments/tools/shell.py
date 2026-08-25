@@ -19,10 +19,9 @@ def register_shell_tool(
 ) -> None:
     output_budget = budget or OutputBudget()
 
-    @tools.register(
+    @tools.tool(
         description,
         name=name,
-        params=ShellParams,
         status=lambda params: f"Running: {params.command}",
         requires_approval=requires_approval,
     )

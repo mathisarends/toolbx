@@ -24,9 +24,8 @@ class EditFileParams(BaseModel):
 
 
 def register_file_tools(tools: ToolRegistry) -> None:
-    @tools.register(
+    @tools.tool(
         "Read a UTF-8 text file from the workspace.",
-        params=ReadFileParams,
         status=lambda params: f"Reading {params.path}",
     )
     async def read_file(
@@ -35,10 +34,9 @@ def register_file_tools(tools: ToolRegistry) -> None:
     ) -> str:
         return await workspace.read_file(params.path)
 
-    @tools.register(
+    @tools.tool(
         "Write the complete UTF-8 content of a file in the workspace. "
         "Missing parent directories are created.",
-        params=WriteFileParams,
         status=lambda params: f"Writing {params.path}",
     )
     async def write_file(
@@ -48,10 +46,9 @@ def register_file_tools(tools: ToolRegistry) -> None:
         await workspace.write_file(params.path, params.content)
         return f"Wrote {params.path}"
 
-    @tools.register(
+    @tools.tool(
         "Replace exact text in a UTF-8 file in the workspace. By default the "
         "old text must occur exactly once.",
-        params=EditFileParams,
         status=lambda params: f"Editing {params.path}",
     )
     async def edit_file(

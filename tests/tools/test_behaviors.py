@@ -198,6 +198,26 @@ def test_per_call_context_does_not_replace_the_registry_context() -> None:
         tools.get_schema("invalid")
 
 
+@pytest.mark.asyncio
+async def test_registry_context_can_be_set_after_creation() -> None:
+    tools = Tools()
+
+    @tools.action("Identify the configured service", available_when=provided(Service))
+    def identify(service: Inject[Service]) -> str:
+        return service.name
+
+    assert tools.get_schema() == []
+
+    tools.set_context(ToolContext(Service("updated")))
+
+    assert [schema.name for schema in tools.get_schema()] == ["identify"]
+    assert await tools.execute("identify") == "updated"
+
+    tools.set_context(None)
+
+    assert tools.get_schema() == []
+
+
 def test_status_supports_plain_strings_and_callables() -> None:
     literal_tool = Tool(
         "literal",

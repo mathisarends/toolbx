@@ -25,6 +25,10 @@ class ToolRegistry:
         self._context = context
         self._handler = compose(middleware or (), self._invoke)
 
+    def set_context(self, context: ToolContext | None) -> None:
+        """Set the default context used for schemas and tool execution."""
+        self._context = context
+
     def action[ParamsT: BaseModel, **CallT, ResultT](
         self,
         description: str | ToolDescription | None = None,

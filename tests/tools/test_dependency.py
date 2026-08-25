@@ -30,7 +30,7 @@ class Second:
 
 @pytest.mark.asyncio
 async def test_dependencies_are_singletons_for_the_container_lifetime() -> None:
-    events: list[str] = []
+    connection_calls = 0
 
     class Dependencies(DependencyProvider):
         @provide
@@ -42,12 +42,10 @@ async def test_dependencies_are_singletons_for_the_container_lifetime() -> None:
             return Client(settings)
 
         @provide
-        async def connection(self) -> AsyncIterator[Connection]:
-            events.append("open")
-            try:
-                yield Connection()
-            finally:
-                events.append("close")
+        async def connection(self) -> Connection:
+            nonlocal connection_calls
+            connection_calls += 1
+            return Connection()
 
     tools = Tools(dependencies=[Dependencies()])
 
@@ -61,15 +59,14 @@ async def test_dependencies_are_singletons_for_the_container_lifetime() -> None:
         return value, client, first, first is second
 
     assert set(tools.get_schema()[0].parameters["properties"]) == {"value"}
-    async with tools:
-        first = await tools.execute("use", {"value": 3})
-        second = await tools.execute("use", {"value": 4})
+    first = await tools.execute("use", {"value": 3})
+    second = await tools.execute("use", {"value": 4})
 
     assert first[0] == 3
     assert first[1] is second[1]
     assert first[2] is second[2]
     assert first[3] is True
-    assert events == ["open", "close"]
+    assert connection_calls == 1
 
 
 @pytest.mark.asyncio
@@ -136,22 +133,24 @@ def test_dependency_cycle_is_rejected() -> None:
         DependencyContainer(Cyclic())
 
 
-@pytest.mark.asyncio
-async def test_synchronous_generator_is_closed() -> None:
-    events: list[str] = []
-
+def test_generator_providers_are_rejected() -> None:
     class Dependencies(DependencyProvider):
         @provide
         def value(self) -> Iterator[Settings]:
-            try:
-                yield Settings()
-            finally:
-                events.append("closed")
+            yield Settings()
 
-    container = DependencyContainer(Dependencies())
-    async with container:
-        await container.get(Settings)
-    assert events == ["closed"]
+    with pytest.raises(TypeError, match="application must own resource lifecycles"):
+        DependencyContainer(Dependencies())
+
+
+def test_async_generator_providers_are_rejected() -> None:
+    class Dependencies(DependencyProvider):
+        @provide
+        async def value(self) -> AsyncIterator[Settings]:
+            yield Settings()
+
+    with pytest.raises(TypeError, match="application must own resource lifecycles"):
+        DependencyContainer(Dependencies())
 
 
 @pytest.mark.asyncio
@@ -177,44 +176,17 @@ async def test_concurrent_resolution_constructs_one_instance() -> None:
 
 
 @pytest.mark.asyncio
-async def test_container_can_be_reused_after_cleanup() -> None:
-    class Dependencies(DependencyProvider):
-        @provide
-        def settings(self) -> Settings:
-            return Settings()
-
-    container = DependencyContainer(Dependencies())
-    async with container:
-        first = await container.get(Settings)
-    async with container:
-        second = await container.get(Settings)
-
-    assert first is not second
-
-
-@pytest.mark.asyncio
-async def test_container_rejects_nested_lifetimes() -> None:
-    container = DependencyContainer()
-
-    async with container:
-        with pytest.raises(RuntimeError, match="already active"):
-            await container.__aenter__()
-
-
-@pytest.mark.asyncio
-async def test_aclose_cleans_up_resolved_resources() -> None:
-    events: list[str] = []
+async def test_composition_root_can_supply_an_existing_resource() -> None:
+    connection = Connection()
 
     class Dependencies(DependencyProvider):
+        def __init__(self, resource: Connection) -> None:
+            self.resource = resource
+
         @provide
-        async def connection(self) -> AsyncIterator[Connection]:
-            try:
-                yield Connection()
-            finally:
-                events.append("closed")
+        def connection(self) -> Connection:
+            return self.resource
 
-    container = DependencyContainer(Dependencies())
-    await container.get(Connection)
-    await container.aclose()
+    container = DependencyContainer(Dependencies(connection))
 
-    assert events == ["closed"]
+    assert await container.get(Connection) is connection

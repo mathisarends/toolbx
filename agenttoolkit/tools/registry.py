@@ -3,8 +3,7 @@ from __future__ import annotations
 import inspect
 import re
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from types import TracebackType
-from typing import Annotated, Any, Self, get_args, get_origin, get_type_hints
+from typing import Annotated, Any, get_args, get_origin, get_type_hints
 
 from pydantic import BaseModel
 
@@ -40,21 +39,6 @@ class ToolRegistry:
         )
         self._context = context
         self._handler = compose(middleware or (), self._invoke)
-
-    async def __aenter__(self) -> Self:
-        if self._container is not None:
-            await self._container.__aenter__()
-        return self
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_value: BaseException | None,
-        traceback: TracebackType | None,
-    ) -> bool | None:
-        if self._container is None:
-            return None
-        return await self._container.__aexit__(exc_type, exc_value, traceback)
 
     def set_context(self, context: ToolContext | None) -> None:
         """Set the default context used for schemas and tool execution."""

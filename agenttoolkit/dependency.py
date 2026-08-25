@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import inspect
-from collections.abc import AsyncGenerator, AsyncIterator, Callable, Iterator, Mapping
-from contextlib import AsyncExitStack, asynccontextmanager
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from types import MappingProxyType, TracebackType
-from typing import Any, Self, get_args, get_origin, get_type_hints
+from types import MappingProxyType
+from typing import Any, get_type_hints
 
 _PROVIDE_MARKER = object()
 
@@ -26,8 +25,6 @@ class _Definition:
     dependency: type
     factory: Callable[..., Any]
     dependencies: Mapping[str, type]
-    is_generator: bool
-    is_async_generator: bool
 
 
 class DependencyContainer:
@@ -36,34 +33,8 @@ class DependencyContainer:
     def __init__(self, *providers: DependencyProvider) -> None:
         self._definitions = MappingProxyType(self._collect(providers))
         self._validate_graph()
-        self._stack = AsyncExitStack()
         self._values: dict[type, Any] = {}
         self._pending: dict[type, Any] = {}
-        self._entered = False
-
-    async def __aenter__(self) -> Self:
-        if self._entered:
-            raise RuntimeError("The dependency container is already active")
-        self._entered = True
-        return self
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_value: BaseException | None,
-        traceback: TracebackType | None,
-    ) -> bool | None:
-        try:
-            return await self._stack.__aexit__(exc_type, exc_value, traceback)
-        finally:
-            self._reset()
-
-    async def aclose(self) -> None:
-        """Close singleton resources and clear all resolved instances."""
-        try:
-            await self._stack.aclose()
-        finally:
-            self._reset()
 
     async def get[T](self, dependency: type[T]) -> T:
         """Resolve and cache one registered dependency."""
@@ -109,12 +80,6 @@ class DependencyContainer:
             name: await self.get(required)
             for name, required in definition.dependencies.items()
         }
-        if definition.is_async_generator:
-            manager = asynccontextmanager(definition.factory)(**kwargs)
-            return await self._stack.enter_async_context(manager)
-        if definition.is_generator:
-            manager = _async_context_from_generator(definition.factory, kwargs)
-            return await self._stack.enter_async_context(manager)
         value = definition.factory(**kwargs)
         return await value if inspect.isawaitable(value) else value
 
@@ -132,6 +97,14 @@ class DependencyContainer:
                     is not _PROVIDE_MARKER
                 ):
                     continue
+                if inspect.isgeneratorfunction(factory) or inspect.isasyncgenfunction(
+                    factory
+                ):
+                    factory_name = getattr(factory, "__name__", type(factory).__name__)
+                    raise TypeError(
+                        f"Dependency provider '{factory_name}' cannot be a generator; "
+                        "the application must own resource lifecycles"
+                    )
                 hints = get_type_hints(factory, include_extras=True)
                 annotation = hints.get("return")
                 dependency = _provided_type(annotation, factory)
@@ -153,8 +126,6 @@ class DependencyContainer:
                     dependency=dependency,
                     factory=factory,
                     dependencies=MappingProxyType(required),
-                    is_generator=inspect.isgeneratorfunction(factory),
-                    is_async_generator=inspect.isasyncgenfunction(factory),
                 )
         return definitions
 
@@ -185,38 +156,9 @@ class DependencyContainer:
         for dependency in self._definitions:
             visit(dependency)
 
-    def _reset(self) -> None:
-        self._stack = AsyncExitStack()
-        self._values.clear()
-        self._pending.clear()
-        self._entered = False
-
 
 def _provided_type(annotation: Any, factory: Callable[..., Any]) -> type:
     factory_name = getattr(factory, "__name__", type(factory).__name__)
     if annotation is None:
         raise TypeError(f"Dependency provider '{factory_name}' needs a return type")
-    if inspect.isgeneratorfunction(factory) or inspect.isasyncgenfunction(factory):
-        args = get_args(annotation)
-        if len(args) != 1 or get_origin(annotation) not in {Iterator, AsyncIterator}:
-            raise TypeError(
-                f"Generator provider '{factory_name}' must return "
-                "Iterator[T] or AsyncIterator[T]"
-            )
-        return args[0]
     return annotation
-
-
-@asynccontextmanager
-async def _async_context_from_generator(
-    factory: Callable[..., Iterator[Any]], kwargs: dict[str, Any]
-) -> AsyncGenerator[Any]:
-    iterator = factory(**kwargs)
-    try:
-        yield next(iterator)
-    except StopIteration as error:
-        raise RuntimeError("Dependency generator did not yield") from error
-    finally:
-        close = getattr(iterator, "close", None)
-        if close is not None:
-            close()

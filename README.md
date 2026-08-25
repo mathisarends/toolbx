@@ -280,36 +280,33 @@ validates missing definitions, duplicates, and cycles when it is constructed.
 Every dependency is a singleton: it is created on first use and the same
 instance is reused by every subsequent tool call.
 
-```python
-from collections.abc import AsyncIterator
-
-from agenttoolkit import DependencyProvider, provide
-
-
-class Dependencies(DependencyProvider):
-    @provide
-    def client(self) -> SearchClient:
-        return SearchClient()
-
-    @provide
-    async def connection(self) -> AsyncIterator[Connection]:
-        connection = await connect()
-        try:
-            yield connection
-        finally:
-            await connection.close()
-```
-
-Normal singleton dependencies need no context manager:
+Singleton dependencies need no context manager:
 
 ```python
 await tools.execute("search", {"query": "dependency injection"})
 ```
 
-Factory methods may be synchronous, asynchronous, generators, or async
-generators. Use `async with tools` when generator-backed resources need
-deterministic cleanup; leaving the context closes them and clears the singleton
-cache. `Tools` creates and owns the dependency container internally.
+Factory methods may be synchronous or asynchronous. Generator providers are
+intentionally unsupported: the application owns external resource lifecycles
+and passes ready instances into its provider:
+
+```python
+class Dependencies(DependencyProvider):
+    def __init__(self, database: Database) -> None:
+        self._database = database
+
+    @provide
+    def database(self) -> Database:
+        return self._database
+
+
+async with Database.connect() as database:
+    tools = Tools(dependencies=[Dependencies(database)])
+    await tools.execute("search", {"query": "dependency injection"})
+```
+
+`Tools` never closes injected resources. The composition root that created a
+resource also decides when to close it.
 
 ## Conditional availability and descriptions
 
@@ -695,7 +692,7 @@ The complete list of what the toolkit provides:
   `requires_approval` flag, kept out of the model-facing schema but readable
   by the host loop that dispatches calls.
 - Singleton dependency injection (`Inject[T]`) with validated dependency
-  graphs and optional lifecycle cleanup for generator-backed resources.
+  graphs and application-owned resource lifecycles.
 - Conditional tool availability and dynamic, context-aware descriptions.
 - Sync and async tool execution behind a single async API.
 - A composable, opt-in middleware pipeline with provided error-boundary and

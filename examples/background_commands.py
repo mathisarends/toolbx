@@ -46,7 +46,7 @@ def register_background_shell_tools(
     tools: ToolRegistry,
     jobs: CommandJobManager,
 ) -> None:
-    @tools.action(
+    @tools.register(
         "Start a command in the background and return a job ID immediately.",
         name="start_command",
         params=StartCommandParams,
@@ -59,7 +59,7 @@ def register_background_shell_tools(
         )
         return _response(snapshot)
 
-    @tools.action(
+    @tools.register(
         "Poll a background command for status and output.",
         name="check_output",
         params=JobParams,
@@ -68,7 +68,7 @@ def register_background_shell_tools(
     def check_output(params: JobParams) -> dict[str, Any]:
         return _response(jobs.check_output(params.job_id))
 
-    @tools.action(
+    @tools.register(
         "Cancel a running background command.",
         name="cancel_command",
         params=JobParams,

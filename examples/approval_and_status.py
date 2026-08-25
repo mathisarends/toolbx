@@ -15,7 +15,7 @@ class TransferParams(BaseModel):
 # `status` renders a human-readable line for the arguments an agent is about
 # to call the tool with, before execution — handy for approval prompts and
 # activity logs. It accepts a plain string or a callable taking the params.
-@tools.action(
+@tools.register(
     "Transfer money between accounts (needs confirmation)",
     params=TransferParams,
     status=lambda params: f"Transferring {params.amount} to {params.to}",

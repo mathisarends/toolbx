@@ -10,31 +10,31 @@ class MultiplyParams(BaseModel):
     right: int
 
 
-class AgentAction(BaseModel):
+class AgentResponse(BaseModel):
     reasoning: str = Field(description="Why this tool should be called")
 
 
 tools = StructuredOutputTools()
 
 
-@tools.action("Multiply two integers", params=MultiplyParams)
+@tools.register("Multiply two integers", params=MultiplyParams)
 def multiply(params: MultiplyParams) -> int:
     return params.left * params.right
 
 
 async def main() -> None:
-    [MultiplyAction] = tools.create_action_model(base_model=AgentAction)
+    [MultiplyTool] = tools.create_tool_models(base_model=AgentResponse)
 
-    # Pass MultiplyAction to an LLM client as its structured-output model.
-    action = MultiplyAction.model_validate(
+    # Pass MultiplyTool to an LLM client as its structured-output model.
+    response = MultiplyTool.model_validate(
         {
             "reasoning": "The user asked for the product.",
             "multiply": {"left": 6, "right": 7},
         }
     )
 
-    result = await tools.execute("multiply", action.multiply.model_dump())
-    print(MultiplyAction.model_json_schema())
+    result = await tools.execute("multiply", response.multiply.model_dump())
+    print(MultiplyTool.model_json_schema())
     print(result)
 
 

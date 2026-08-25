@@ -32,7 +32,7 @@ async def test_register_validate_inject_and_execute() -> None:
     client = SearchClient("found:")
     tools = Tools(context=ToolContext(client))
 
-    @tools.action(
+    @tools.register(
         "Search",
         params=SearchParams,
         tags=["network"],
@@ -57,7 +57,7 @@ async def test_register_validate_inject_and_execute() -> None:
 async def test_plain_signature_is_validated_and_sync_result_is_returned() -> None:
     tools = Tools(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
 
-    @tools.action("Add numbers")
+    @tools.register("Add numbers")
     def add(a: int, b: int = 1) -> int:
         return a + b
 
@@ -72,7 +72,7 @@ async def test_plain_signature_is_validated_and_sync_result_is_returned() -> Non
 def test_schema_is_provider_neutral_with_adapters() -> None:
     tools = Tools()
 
-    @tools.action("Search", params=SearchParams)
+    @tools.register("Search", params=SearchParams)
     def search(params: SearchParams) -> None:
         pass
 
@@ -94,7 +94,7 @@ def test_schema_is_provider_neutral_with_adapters() -> None:
 def test_annotated_description_is_included_in_callable_schema() -> None:
     tools = Tools()
 
-    @tools.action("Greet")
+    @tools.register("Greet")
     def greet(name: Annotated[str, "Person to greet"]) -> None:
         pass
 
@@ -102,30 +102,30 @@ def test_annotated_description_is_included_in_callable_schema() -> None:
     assert parameters["properties"]["name"]["description"] == "Person to greet"
 
 
-def test_action_models_support_structured_output_and_a_custom_base() -> None:
-    class StructuredAction(BaseModel):
+def test_tool_models_support_structured_output_and_a_custom_base() -> None:
+    class StructuredResponse(BaseModel):
         request_id: str = "generated"
 
     tools = StructuredOutputTools()
 
-    @tools.action("Search the documentation", params=SearchParams)
+    @tools.register("Search the documentation", params=SearchParams)
     def search(params: SearchParams) -> None:
         pass
 
-    @tools.action("Do nothing")
+    @tools.register("Do nothing")
     def noop() -> None:
         pass
 
-    models = tools.create_action_model(
+    models = tools.create_tool_models(
         ["search"],
-        base_model=StructuredAction,
+        base_model=StructuredResponse,
     )
 
     assert len(models) == 1
-    assert issubclass(models[0], StructuredAction)
-    action = models[0].model_validate({"search": {"query": "tools"}})
-    assert action.request_id == "generated"
-    assert action.search == SearchParams(query="tools")
+    assert issubclass(models[0], StructuredResponse)
+    response = models[0].model_validate({"search": {"query": "tools"}})
+    assert response.request_id == "generated"
+    assert response.search == SearchParams(query="tools")
     assert models[0].model_json_schema()["properties"]["search"]["description"] == (
         "Search the documentation"
     )
@@ -134,27 +134,27 @@ def test_action_models_support_structured_output_and_a_custom_base() -> None:
         models[0].model_validate({"search": {"query": "tools"}, "unexpected": True})
 
 
-def test_action_models_respect_contextual_availability() -> None:
+def test_tool_models_respect_contextual_availability() -> None:
     tools = StructuredOutputTools()
 
-    @tools.action("Search", available_when=provided(SearchClient))
+    @tools.register("Search", available_when=provided(SearchClient))
     def search(query: str) -> None:
         pass
 
-    assert tools.create_action_model() == []
-    models = tools.create_action_model(context=ToolContext(SearchClient()))
-    assert [model.__name__ for model in models] == ["SearchActionModel"]
+    assert tools.create_tool_models() == []
+    models = tools.create_tool_models(context=ToolContext(SearchClient()))
+    assert [model.__name__ for model in models] == ["SearchTool"]
 
 
 def test_tool_representations_expose_only_their_own_interface() -> None:
-    assert not hasattr(Tools(), "create_action_model")
+    assert not hasattr(Tools(), "create_tool_models")
     assert not hasattr(StructuredOutputTools(), "get_schema")
 
 
 def test_context_controls_availability_and_description() -> None:
     tools = Tools()
 
-    @tools.action(
+    @tools.register(
         description_from_context(
             SearchClient,
             render=lambda client: f"Search with prefix {client.prefix}",
@@ -180,7 +180,7 @@ async def test_tool_errors_are_logged_and_returned_by_the_boundary(
 ) -> None:
     tools = Tools(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
 
-    @tools.action("Fail internally")
+    @tools.register("Fail internally")
     def internal_failure() -> None:
         raise RuntimeError("secret")
 
@@ -195,7 +195,7 @@ async def test_tool_errors_are_logged_and_returned_by_the_boundary(
 async def test_tools_do_not_install_an_error_boundary_by_default() -> None:
     tools = Tools()
 
-    @tools.action("Fail internally")
+    @tools.register("Fail internally")
     def internal_failure() -> None:
         raise RuntimeError("secret")
 
@@ -206,12 +206,12 @@ async def test_tools_do_not_install_an_error_boundary_by_default() -> None:
 def test_duplicate_registration_and_status_validation() -> None:
     tools = Tools()
 
-    @tools.action("First")
+    @tools.register("First")
     def duplicate() -> None:
         pass
 
     with pytest.raises(ValueError, match="already registered"):
 
-        @tools.action("Second")
+        @tools.register("Second")
         def duplicate() -> None:
             pass

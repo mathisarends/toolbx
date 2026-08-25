@@ -67,7 +67,7 @@ def test_availability_predicates_can_be_composed() -> None:
 async def test_optional_injected_dependency_uses_function_default() -> None:
     tools = Tools()
 
-    @tools.action("Identify the configured service")
+    @tools.register("Identify the configured service")
     def identify(service: Inject[Service] = None) -> str:
         return "default" if service is None else service.name
 
@@ -85,7 +85,7 @@ async def test_optional_injected_dependency_uses_function_default() -> None:
 async def test_missing_required_injection_is_returned_as_failure() -> None:
     tools = Tools(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
 
-    @tools.action("Use a required service")
+    @tools.register("Use a required service")
     def identify(service: Inject[Service]) -> str:
         return service.name
 
@@ -101,11 +101,11 @@ async def test_missing_required_injection_is_returned_as_failure() -> None:
 async def test_unavailable_and_unknown_tools_report_available_names() -> None:
     tools = Tools(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
 
-    @tools.action("Always available")
+    @tools.register("Always available")
     def public() -> None:
         pass
 
-    @tools.action("Requires a service", available_when=provided(Service))
+    @tools.register("Requires a service", available_when=provided(Service))
     def private() -> None:
         pass
 
@@ -139,7 +139,7 @@ async def test_custom_middleware_wraps_execution() -> None:
     events: list[str] = []
     tools = Tools(middleware=[RecordingMiddleware(events)])
 
-    @tools.action("Double a number")
+    @tools.register("Double a number")
     def double(value: int) -> int:
         return value * 2
 
@@ -155,7 +155,7 @@ async def test_structured_tool_results_pass_through_unchanged() -> None:
     tools = Tools()
     payload: dict[str, object] = {"value": 6, "citations": ["doc-1"]}
 
-    @tools.action("Return structured data")
+    @tools.register("Return structured data")
     def structured() -> dict[str, object]:
         return payload
 
@@ -166,11 +166,11 @@ def test_registry_merge_iteration_and_replacement_are_explicit() -> None:
     first = Tools()
     second = Tools()
 
-    @first.action("Old implementation", name="shared")
+    @first.register("Old implementation", name="shared")
     def old() -> str:
         return "old"
 
-    @second.action("New implementation", name="shared")
+    @second.register("New implementation", name="shared")
     def new() -> str:
         return "new"
 
@@ -186,7 +186,7 @@ def test_registry_merge_iteration_and_replacement_are_explicit() -> None:
 def test_per_call_context_does_not_replace_the_registry_context() -> None:
     tools = Tools(context=ToolContext(Service("registry")))
 
-    @tools.action("Requires a service", available_when=provided(Service))
+    @tools.register("Requires a service", available_when=provided(Service))
     def current() -> None:
         pass
 
@@ -202,7 +202,7 @@ def test_per_call_context_does_not_replace_the_registry_context() -> None:
 async def test_registry_context_can_be_set_after_creation() -> None:
     tools = Tools()
 
-    @tools.action("Identify the configured service", available_when=provided(Service))
+    @tools.register("Identify the configured service", available_when=provided(Service))
     def identify(service: Inject[Service]) -> str:
         return service.name
 
@@ -253,7 +253,7 @@ def test_tools_can_declare_approval_requirement() -> None:
 
     assert tool.requires_approval is False
 
-    @tools.action("Sensitive action", requires_approval=True)
+    @tools.register("Sensitive action", requires_approval=True)
     def sensitive() -> None:
         pass
 
@@ -288,7 +288,7 @@ def test_callable_schema_rejects_variadics_and_requires_input() -> None:
 async def test_param_model_binding_must_be_unambiguous() -> None:
     tools = Tools(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
 
-    @tools.action("Ambiguous", params=StatusParams)
+    @tools.register("Ambiguous", params=StatusParams)
     def ambiguous(first: object, second: object) -> None:
         pass
 

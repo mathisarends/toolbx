@@ -14,14 +14,14 @@ tools = Tools(context=ToolContext(UserInfo(name="Mathis")))
 
 
 # Hidden entirely unless a UserInfo dependency is present in the context.
-@tools.action("Get personalized settings", available_when=provided(UserInfo))
+@tools.register("Get personalized settings", available_when=provided(UserInfo))
 def get_settings() -> str:
     return "settings"
 
 
 # Hidden unless a UserInfo is present AND satisfies the predicate. `~`, `&`
 # and `|` combine ToolAvailability instances, e.g. `requires(...) & provided(...)`.
-@tools.action(
+@tools.register(
     "Delete a user account (admin only)",
     available_when=requires(UserInfo, predicate=lambda user: user.is_admin),
 )

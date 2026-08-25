@@ -28,7 +28,7 @@ it is a building block, not a framework.
 
 ## Features
 
-- Registration through a `@tools.action` decorator — no hand-written JSON
+- Registration through a `@tools.register` decorator — no hand-written JSON
   Schema, for either plain function signatures or Pydantic models.
 - Runtime metadata (`effects`, `status`, `tags`, custom fields) and an
   `requires_approval` flag, kept out of the model-facing schema but readable
@@ -41,7 +41,7 @@ it is a building block, not a framework.
   logging middleware; no middleware is installed implicitly.
 - Thin, dependency-free schema adapters for OpenAI and Anthropic tool-call
   formats.
-- A separate structured-output registry that creates Pydantic action models
+- A separate structured-output registry that creates Pydantic tool models
   without adding that interface to schema-based tools.
 - Tool implementations return their natural Python values; the execution
   pipeline does not impose an application-specific result envelope.
@@ -98,7 +98,7 @@ tools = Tools(
 )
 
 
-@tools.action(
+@tools.register(
     "Search the connected knowledge base.",
     params=SearchParams,
     status=lambda params: f"Searching for {params.query}...",
@@ -125,12 +125,12 @@ exception is logged.
 
 ## Defining tools
 
-The `@tools.action(...)` decorator is the entire surface most code touches.
+The `@tools.register(...)` decorator is the entire surface most code touches.
 Parameters come from a plain function signature or, for validation and
 richer schemas, a Pydantic model passed as `params=`:
 
 ```python
-@tools.action("Add two integers.")
+@tools.register("Add two integers.")
 def add(a: int, b: int) -> int:
     return a + b
 
@@ -140,7 +140,7 @@ class RefundParams(BaseModel):
     amount: float = Field(gt=0, description="Amount to refund, in USD")
 
 
-@tools.action(
+@tools.register(
     "Issue a refund for an order.",
     params=RefundParams,
     status=lambda params: (
@@ -169,7 +169,7 @@ exist for the host loop that dispatches the call:
 - `metadata` — an arbitrary read-only mapping for anything else the host
   application needs, readable as `tool.extra`.
 - `requires_approval` — readable as `tool.requires_approval`; check it
-  before calling `tools.execute(...)` if the action needs user
+  before calling `tools.execute(...)` if the call needs user
   confirmation first. `agenttoolkit` does not enforce approval itself.
 
 ```python
@@ -184,17 +184,17 @@ tool.format_status({"order_id": "o-123", "amount": 20.0})
 A callable `status` gets its field access checked statically by the IDE or
 type checker; a plain string is rendered as-is.
 
-Prefer `tools.action(...)` for registering tools. Direct registration is an
-internal implementation detail.
+Prefer `tools.register(...)` for registering tools. Direct insertion into the
+registry is an internal implementation detail.
 
 ## Structured-output tools
 
-Some providers select an action by asking the model for a structured response
+Some providers select a tool by asking the model for a structured response
 rather than a provider-specific tool call. Use `StructuredOutputTools` in
-that case. It creates one Pydantic model per available action, so the model
-can choose an action while also returning fields shared by every response.
+that case. It creates one Pydantic model per available tool, so the model
+can choose a tool while also returning fields shared by every response.
 
-This is useful for browser-use-style loops, where an action needs to travel
+This is useful for browser-use-style loops, where a tool call needs to travel
 with additional output such as the model's reasoning, a page summary, or a
 request identifier:
 
@@ -205,21 +205,21 @@ from agenttoolkit import StructuredOutputTools
 
 
 class BrowserResponse(BaseModel):
-    reasoning: str = Field(description="Why this action is the next step")
+    reasoning: str = Field(description="Why this tool is the next step")
     page_summary: str = Field(description="What the model observed on the page")
 
 
 tools = StructuredOutputTools()
 
 
-@tools.action("Open a URL in the browser")
+@tools.register("Open a URL in the browser")
 async def navigate(url: str) -> None: ...
 
 
-[NavigateAction] = tools.create_action_model(base_model=BrowserResponse)
+[NavigateTool] = tools.create_tool_models(base_model=BrowserResponse)
 
-# Give NavigateAction to the LLM as its structured-output model.
-response = NavigateAction.model_validate(
+# Give NavigateTool to the LLM as its structured-output model.
+response = NavigateTool.model_validate(
     {
         "reasoning": "The requested page has not been opened yet.",
         "page_summary": "No page is open.",
@@ -229,11 +229,11 @@ response = NavigateAction.model_validate(
 await tools.execute("navigate", response.navigate.model_dump())
 ```
 
-`create_action_model()` returns only actions available in the active context.
-Pass `include_actions=[...]` to limit the choices, or `context=...` to derive
+`create_tool_models()` returns only tools available in the active context.
+Pass `include_tools=[...]` to limit the choices, or `context=...` to derive
 them for a particular request. `StructuredOutputTools` shares registration,
 availability, middleware, execution, and merging with `Tools`; it differs
-only in how actions are presented to the model.
+only in how tools are presented to the model.
 
 ## Dependency injection with `ToolContext`
 
@@ -251,7 +251,7 @@ The context is known up front, so it belongs in the constructor. Dependencies
 that only materialise later go through `context.provide(...)` on the instance
 you already handed over; a context that differs per request goes through the
 `context=` argument on `execute(...)` and the representation-specific
-`get_schema(...)` or `create_action_model(...)`, which leaves the registry
+`get_schema(...)` or `create_tool_models(...)`, which leaves the registry
 context untouched.
 
 `ToolContext.resolve(T)` returns the most recently provided instance of type
@@ -277,7 +277,7 @@ compose with `&`, `|`, and `~`:
 from agenttoolkit import provided, requires
 
 
-@tools.action(
+@tools.register(
     "Issue a refund (admin only).",
     available_when=provided(BillingClient)
     & requires(UserInfo, predicate=lambda user: user.is_admin),
@@ -299,7 +299,7 @@ description = description_from_context(
 )
 
 
-@tools.action(description)
+@tools.register(description)
 def balance() -> float: ...
 ```
 
@@ -348,7 +348,7 @@ class WeatherResult(BaseModel):
     temp_c: float
 
 
-@tools.action("Get the current weather for a known city")
+@tools.register("Get the current weather for a known city")
 def get_weather(city: str) -> WeatherResult:
     temp_c = KNOWN_CITIES.get(city.lower())
     if temp_c is None:

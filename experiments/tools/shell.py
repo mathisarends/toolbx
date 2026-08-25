@@ -19,7 +19,7 @@ def register_shell_tool(
 ) -> None:
     output_budget = budget or OutputBudget()
 
-    @tools.action(
+    @tools.register(
         description,
         name=name,
         params=ShellParams,

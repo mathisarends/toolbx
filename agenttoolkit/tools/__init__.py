@@ -16,6 +16,7 @@ from .middleware import (
     ToolMiddleware,
 )
 from .models import Tool, ToolMetadata, ToolSchemaFormat
+from .plugins import tool
 from .registry import ToolRegistry
 from .schema import ToolSchema, build_schema
 from .structured import StructuredOutputTools
@@ -45,4 +46,5 @@ __all__ = [
     "provide",
     "provided",
     "requires",
+    "tool",
 ]

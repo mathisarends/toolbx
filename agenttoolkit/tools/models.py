@@ -48,6 +48,8 @@ class Tool:
         metadata: ToolMetadata | None = None,
         requires_approval: bool = False,
         available_when: ToolAvailability | None = None,
+        plugin_name: str | None = None,
+        local_name: str | None = None,
     ) -> None:
         if not name:
             raise ValueError("Tool name cannot be empty")
@@ -58,6 +60,8 @@ class Tool:
         self._metadata = metadata or ToolMetadata()
         self.requires_approval = requires_approval
         self.available_when = available_when
+        self.plugin_name = plugin_name
+        self.local_name = local_name
         self.input_model = _schema_model(fn, param_model=self.param_model)
         self.parameters = (
             deepcopy(dict(parameters))

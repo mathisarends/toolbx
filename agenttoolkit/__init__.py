@@ -28,6 +28,7 @@ from .tools import (
     description_from_context,
     provided,
     requires,
+    tool,
 )
 
 __all__ = [
@@ -60,4 +61,5 @@ __all__ = [
     "provide",
     "provided",
     "requires",
+    "tool",
 ]

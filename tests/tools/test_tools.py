@@ -38,6 +38,8 @@ def test_register_adds_an_existing_tool_imperatively() -> None:
 
     assert tools.register(tool) is tool
     assert tools.get("greet") is tool
+    assert tool.plugin_name is None
+    assert tool.local_name is None
 
 
 @pytest.mark.asyncio

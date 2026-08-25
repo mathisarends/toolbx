@@ -13,6 +13,7 @@ it is a building block, not a framework.
 - [Installation](#installation)
 - [Quickstart](#quickstart)
 - [Defining tools](#defining-tools)
+- [Grouping tools in plugins](#grouping-tools-in-plugins)
 - [Tool metadata](#tool-metadata)
 - [Driving an agent loop](#driving-an-agent-loop)
 - [Results and errors](#results-and-errors)
@@ -100,6 +101,54 @@ Tools may be synchronous or asynchronous; both run behind the same async API.
 Use `tools.register(tool)` when you already have a `Tool` object and want to
 register it imperatively. Pass `replace=True` to replace a tool with the same
 name.
+
+## Grouping tools in plugins
+
+For larger applications, group related tools in a class and inject stable
+application services through its constructor. The module-level `@tool`
+decorator marks methods without registering them; `add_plugin` registers all
+marked methods together:
+
+```python
+from agenttoolkit import Inject, Tools, tool
+
+
+class CatalogPlugin:
+    def __init__(self, catalog: CatalogService) -> None:
+        self._catalog = catalog
+
+    @tool("Search the product catalog")
+    async def search(self, query: str, limit: int = 10) -> list[Product]:
+        return await self._catalog.search(query, limit=limit)
+
+    @tool("Compare products for the current user")
+    async def compare(
+        self,
+        product_ids: list[str],
+        user: Inject[CurrentUser],
+    ) -> Comparison:
+        return await self._catalog.compare(product_ids, user=user)
+
+    def normalize(self, query: str) -> str:
+        # Undecorated methods are never exposed to the model.
+        return " ".join(query.split())
+
+
+tools = Tools()
+tools.add_plugin(CatalogPlugin(catalog_service), name="catalog")
+```
+
+The plugin name namespaces every exposed method: the example registers
+`catalog_search` and `catalog_compare`. Each registered descriptor retains its
+`plugin_name` and local `local_name`. Constructor dependencies belong to the
+plugin's lifetime; request-, turn-, or call-scoped dependencies remain
+`Inject[T]` parameters on individual methods.
+
+Plugin registration is atomic. Invalid methods or name collisions leave the
+registry unchanged. Version 1 accepts constructed instances; applications may
+use any DI framework at their composition root. See the runnable
+[`class_based_plugins.py`](examples/class_based_plugins.py) example for the
+complete setup, including a call-scoped dependency.
 
 ## Tool metadata
 

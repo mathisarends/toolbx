@@ -3,7 +3,12 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 
-from agenttoolkit import Inject, StructuredOutputTools, ToolContext, Tools, tool
+from agenttoolkit import (
+    Inject,
+    StructuredOutputTools,
+    Tools,
+    tool,
+)
 
 
 class SearchParams(BaseModel):
@@ -29,9 +34,8 @@ class SearchPlugin:
     async def search(
         self,
         params: SearchParams,
-        client: Inject[SearchClient],
     ) -> str:
-        return f"{client.prefix}{self.source}:{params.query}:{params.limit}"
+        return f"{self.source}:{params.query}:{params.limit}"
 
     @tool("Fetch one result", name="fetch", requires_approval=True)
     def get_result(self, result_id: str) -> str:
@@ -44,7 +48,7 @@ class SearchPlugin:
 @pytest.mark.asyncio
 async def test_plugin_registers_bound_methods_with_names_and_metadata() -> None:
     plugin = SearchPlugin("docs")
-    tools = Tools(context=ToolContext(SearchClient("found:")))
+    tools = Tools()
 
     registered = tools.add_plugin(plugin, name="knowledge")
 
@@ -68,9 +72,7 @@ async def test_plugin_registers_bound_methods_with_names_and_metadata() -> None:
     assert search.format_status({"query": "DI"}) == "Searching for DI"
     assert fetch.requires_approval is True
     assert tools.get("helper") is None
-    assert await tools.execute("knowledge_search", {"query": "DI"}) == (
-        "found:docs:DI:10"
-    )
+    assert await tools.execute("knowledge_search", {"query": "DI"}) == ("docs:DI:10")
     assert await tools.execute("knowledge_fetch", {"result_id": "r-1"}) == ("docs:r-1")
 
 
@@ -80,6 +82,16 @@ def test_plugin_methods_work_with_structured_output_tools() -> None:
     models = tools.create_tool_models(["knowledge_search"])
     assert [model.__name__ for model in models] == ["KnowledgeSearchTool"]
     assert set(models[0].model_fields) == {"knowledge_search"}
+
+
+def test_plugin_methods_reject_inject_parameters() -> None:
+    class InvalidPlugin:
+        @tool("Invalid")
+        def invalid(self, client: Inject[SearchClient]) -> None:
+            pass
+
+    with pytest.raises(TypeError, match="declare runtime dependencies"):
+        Tools().add_plugin(InvalidPlugin(), name="invalid")
 
 
 def test_plugin_registration_is_atomic_on_existing_name_collision() -> None:
@@ -141,14 +153,14 @@ def test_plugin_rejects_invalid_local_tool_names(name: str) -> None:
         Tools().add_plugin(InvalidNamePlugin(), name="plugin")
 
 
-def test_plugin_requires_an_instance_and_at_least_one_tool() -> None:
+def test_plugin_requires_at_least_one_tool() -> None:
     class EmptyPlugin:
         pass
 
-    with pytest.raises(TypeError, match="expects an instance"):
-        Tools().add_plugin(SearchPlugin, name="search")
     with pytest.raises(ValueError, match="does not define any tools"):
         Tools().add_plugin(EmptyPlugin(), name="empty")
+    with pytest.raises(TypeError, match="expects an instance"):
+        Tools().add_plugin(EmptyPlugin, name="empty")
 
 
 def test_plugin_name_can_only_be_registered_once() -> None:

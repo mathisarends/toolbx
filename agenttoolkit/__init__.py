@@ -1,4 +1,4 @@
-from .dependency import DependencyProvider, Scope, provide
+from .dependency import DependencyProvider, provide
 from .output import OutputBudget
 from .skills import (
     LoadedSkill,
@@ -38,7 +38,6 @@ __all__ = [
     "Inject",
     "LoadedSkill",
     "OutputBudget",
-    "Scope",
     "Skill",
     "SkillChanges",
     "SkillRefreshMiddleware",

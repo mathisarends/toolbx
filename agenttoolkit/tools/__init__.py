@@ -1,4 +1,4 @@
-from agenttoolkit.dependency import DependencyProvider, Scope, provide
+from agenttoolkit.dependency import DependencyProvider, provide
 
 from .binding import (
     ToolAvailability,
@@ -27,7 +27,6 @@ __all__ = [
     "DependencyProvider",
     "ErrorBoundaryMiddleware",
     "Inject",
-    "Scope",
     "SkillRefreshMiddleware",
     "StructuredOutputTools",
     "Tool",

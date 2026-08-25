@@ -1,11 +1,9 @@
 import asyncio
-from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
 from agenttoolkit import (
     DependencyProvider,
     Inject,
-    Scope,
     Tools,
     provide,
 )
@@ -17,13 +15,9 @@ class SearchClient:
 
 
 class Dependencies(DependencyProvider):
-    @provide(scope=Scope.APP)
+    @provide
     def search_client(self) -> SearchClient:
         return SearchClient(prefix="kb:")
-
-    @provide
-    async def request_id(self) -> AsyncIterator[str]:
-        yield "request-1"
 
 
 tools = Tools(dependencies=[Dependencies()])
@@ -34,15 +28,13 @@ tools = Tools(dependencies=[Dependencies()])
 def search(
     query: str,
     client: Inject[SearchClient],
-    request_id: Inject[str],
 ) -> str:
-    return f"{request_id}:{client.prefix}{query}"
+    return f"{client.prefix}{query}"
 
 
 async def main() -> None:
     print(tools.get_schema()[0].parameters)
-    async with tools:
-        result = await tools.execute("search", {"query": "agenttoolkit"})
+    result = await tools.execute("search", {"query": "agenttoolkit"})
     print(result)
 
 

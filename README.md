@@ -110,7 +110,7 @@ decorator marks methods without registering them; `add_plugin` registers all
 marked methods together:
 
 ```python
-from agenttoolkit import Inject, Tools, tool
+from agenttoolkit import Tools, tool
 
 
 class CatalogPlugin:
@@ -121,13 +121,9 @@ class CatalogPlugin:
     async def search(self, query: str, limit: int = 10) -> list[Product]:
         return await self._catalog.search(query, limit=limit)
 
-    @tool("Compare products for the current user")
-    async def compare(
-        self,
-        product_ids: list[str],
-        user: Inject[CurrentUser],
-    ) -> Comparison:
-        return await self._catalog.compare(product_ids, user=user)
+    @tool("Get one product")
+    async def get_product(self, product_id: str) -> Product:
+        return await self._catalog.get(product_id)
 
     def normalize(self, query: str) -> str:
         # Undecorated methods are never exposed to the model.
@@ -139,16 +135,17 @@ tools.add_plugin(CatalogPlugin(catalog_service), name="catalog")
 ```
 
 The plugin name namespaces every exposed method: the example registers
-`catalog_search` and `catalog_compare`. Each registered descriptor retains its
-`plugin_name` and local `local_name`. Constructor dependencies belong to the
-plugin's lifetime; request-, turn-, or call-scoped dependencies remain
-`Inject[T]` parameters on individual methods.
+`catalog_search` and `catalog_get_product`. Each registered descriptor retains
+its `plugin_name` and local `local_name`. Plugins are fully constructed by the
+application and are not connected to the dependency container. Plugin methods
+contain only model-facing parameters; `Inject[T]` is intentionally rejected
+there.
 
 Plugin registration is atomic. Invalid methods or name collisions leave the
-registry unchanged. Version 1 accepts constructed instances; applications may
-use any DI framework at their composition root. See the runnable
+registry unchanged. The application's composition root owns the plugin,
+its dependencies, and their lifecycle. See the runnable
 [`class_based_plugins.py`](examples/class_based_plugins.py) example for the
-complete setup, including a call-scoped dependency.
+complete setup.
 
 ## Tool metadata
 
@@ -279,27 +276,22 @@ async def search(query: str, client: Inject[SearchClient]) -> list[str]:
 ```
 
 Dependencies are declared on `DependencyProvider` classes. The container
-validates missing definitions, duplicates, cycles, and invalid lifetime
-relationships when it is constructed.
-
-Each dependency also has a lifetime, given by its scope:
+validates missing definitions, duplicates, and cycles when it is constructed.
+Every dependency is a singleton: it is created on first use and the same
+instance is reused by every subsequent tool call.
 
 ```python
 from collections.abc import AsyncIterator
 
-from agenttoolkit import DependencyProvider, Scope, provide
+from agenttoolkit import DependencyProvider, provide
 
 
 class Dependencies(DependencyProvider):
-    @provide(scope=Scope.APP)
+    @provide
     def client(self) -> SearchClient:
         return SearchClient()
 
-    @provide(scope=Scope.TURN)
-    def turn_state(self) -> TurnState:
-        return TurnState()
-
-    @provide  # CALL is the default
+    @provide
     async def connection(self) -> AsyncIterator[Connection]:
         connection = await connect()
         try:
@@ -308,19 +300,16 @@ class Dependencies(DependencyProvider):
             await connection.close()
 ```
 
-`APP` lives for the tools context, `TURN` is opened explicitly around an
-agent turn, and `CALL` is opened automatically by `tools.execute()`:
+Normal singleton dependencies need no context manager:
 
 ```python
-async with tools:
-    async with tools.scope(Scope.TURN):
-        await tools.execute("search", {"query": "dependency injection"})
+await tools.execute("search", {"query": "dependency injection"})
 ```
 
-A tool that needs a `TURN` dependency fails clearly when no turn scope is
-active. Factory methods may be synchronous, asynchronous, generators, or
-async generators. Generator cleanup runs when its owning scope exits, even
-after an error. `Tools` creates and owns the dependency container internally.
+Factory methods may be synchronous, asynchronous, generators, or async
+generators. Use `async with tools` when generator-backed resources need
+deterministic cleanup; leaving the context closes them and clears the singleton
+cache. `Tools` creates and owns the dependency container internally.
 
 ## Conditional availability and descriptions
 
@@ -473,7 +462,6 @@ from agenttoolkit import (
     DependencyProvider,
     ErrorBoundaryMiddleware,
     Inject,
-    Scope,
     Tools,
     ToolSchemaFormat,
     provide,
@@ -486,7 +474,7 @@ class SearchParams(BaseModel):
 
 
 class Dependencies(DependencyProvider):
-    @provide(scope=Scope.APP)
+    @provide
     def search_client(self) -> SearchClient:
         return SearchClient()
 
@@ -508,13 +496,10 @@ async def search(params: SearchParams, client: Inject[SearchClient]) -> list[str
     return await client.search(params.query, params.limit)
 
 
-async with tools:
-    schema = tools.get_schema(ToolSchemaFormat.ANTHROPIC)
-
-    async with tools.scope(Scope.TURN):
-        result: object = await tools.execute(
-            "search", {"query": "tool middleware"}
-        )
+schema = tools.get_schema(ToolSchemaFormat.ANTHROPIC)
+result: object = await tools.execute(
+    "search", {"query": "tool middleware"}
+)
 ```
 
 Here the application explicitly enables error handling and call logging. An
@@ -709,8 +694,8 @@ The complete list of what the toolkit provides:
 - Runtime metadata (`effects`, `status`, `tags`, custom fields) and an
   `requires_approval` flag, kept out of the model-facing schema but readable
   by the host loop that dispatches calls.
-- Scoped dependency injection (`Inject[T]`) with validated dependency graphs,
-  lifecycle hooks, and `APP`, `TURN`, and `CALL` lifetimes.
+- Singleton dependency injection (`Inject[T]`) with validated dependency
+  graphs and optional lifecycle cleanup for generator-backed resources.
 - Conditional tool availability and dynamic, context-aware descriptions.
 - Sync and async tool execution behind a single async API.
 - A composable, opt-in middleware pipeline with provided error-boundary and

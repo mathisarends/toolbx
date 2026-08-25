@@ -1,11 +1,11 @@
-"""Group related LLM tools in a class with constructor and call injection."""
+"""Group LLM tools in an externally constructed plugin instance."""
 
 import asyncio
 from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
 
-from agenttoolkit import DependencyProvider, Inject, Tools, provide, tool
+from agenttoolkit import Tools, tool
 
 
 @dataclass(frozen=True)
@@ -29,18 +29,6 @@ class CatalogService:
         return next((item for item in self._products if item.id == product_id), None)
 
 
-@dataclass(frozen=True)
-class CallInfo:
-    request_id: str
-
-
-class Dependencies(DependencyProvider):
-    @provide
-    def call_info(self) -> CallInfo:
-        # A real application would derive this from its active request.
-        return CallInfo(request_id="request-42")
-
-
 class SearchParams(BaseModel):
     query: str = Field(description="Text contained in the product name")
     limit: int = Field(default=5, ge=1, le=20)
@@ -56,10 +44,8 @@ class CatalogPlugin:
     async def search(
         self,
         params: SearchParams,
-        call: Inject[CallInfo],
-    ) -> dict[str, object]:
-        products = await self._catalog.search(params.query, limit=params.limit)
-        return {"request_id": call.request_id, "products": products}
+    ) -> list[Product]:
+        return await self._catalog.search(params.query, limit=params.limit)
 
     @tool("Get one product by its stable identifier", name="get")
     async def get_product(self, product_id: str) -> Product | None:
@@ -78,20 +64,19 @@ async def main() -> None:
             Product("p-3", "USB-C Dock"),
         ]
     )
-    tools = Tools(dependencies=[Dependencies()])
+    tools = Tools()
     tools.add_plugin(CatalogPlugin(catalog), name="catalog")
 
     # The plugin namespace becomes part of each model-facing tool name.
     print([schema.name for schema in tools.get_schema()])
 
-    async with tools:
-        print(
-            await tools.execute(
-                "catalog_search",
-                {"query": "keyboard", "limit": 2},
-            )
+    print(
+        await tools.execute(
+            "catalog_search",
+            {"query": "keyboard", "limit": 2},
         )
-        print(await tools.execute("catalog_get", {"product_id": "p-3"}))
+    )
+    print(await tools.execute("catalog_get", {"product_id": "p-3"}))
 
 
 if __name__ == "__main__":

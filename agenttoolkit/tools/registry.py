@@ -2,17 +2,16 @@ from __future__ import annotations
 
 import inspect
 import re
-from collections.abc import AsyncGenerator, Callable, Iterator, Mapping, Sequence
-from contextlib import asynccontextmanager
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from types import TracebackType
-from typing import Any, Self
+from typing import Annotated, Any, Self, get_args, get_origin, get_type_hints
 
 from pydantic import BaseModel
 
-from agenttoolkit.dependency import DependencyContainer, DependencyProvider, Scope
+from agenttoolkit.dependency import DependencyContainer, DependencyProvider
 from agenttoolkit.tools.arguments import resolve_arguments
 from agenttoolkit.tools.binding import ToolAvailability, ToolDescription
-from agenttoolkit.tools.context import ToolContext
+from agenttoolkit.tools.context import _INJECT_MARKER, ToolContext
 from agenttoolkit.tools.middleware import ToolCall, ToolMiddleware, compose
 from agenttoolkit.tools.models import StatusFormatter, Tool, ToolMetadata
 from agenttoolkit.tools.plugins import ToolDefinition, get_tool_definition
@@ -56,13 +55,6 @@ class ToolRegistry:
         if self._container is None:
             return None
         return await self._container.__aexit__(exc_type, exc_value, traceback)
-
-    @asynccontextmanager
-    async def scope(self, scope: Scope) -> AsyncGenerator[Self]:
-        if self._container is None:
-            raise RuntimeError("Tools has no dependency container")
-        async with self._container.scope(scope):
-            yield self
 
     def set_context(self, context: ToolContext | None) -> None:
         """Set the default context used for schemas and tool execution."""
@@ -114,7 +106,7 @@ class ToolRegistry:
         return tool
 
     def add_plugin(self, plugin: object, *, name: str) -> tuple[Tool, ...]:
-        """Atomically register decorated instance methods as a named plugin."""
+        """Atomically register decorated methods from a plugin instance."""
         if isinstance(plugin, type):
             raise TypeError("add_plugin expects an instance, not a class")
         if not name or _PLUGIN_NAME.fullmatch(name) is None:
@@ -131,6 +123,7 @@ class ToolRegistry:
         pending: list[Tool] = []
         pending_names: set[str] = set()
         for method_name, method, definition in methods:
+            _reject_plugin_method_injection(method_name, method)
             local_name = method_name if definition.name is None else definition.name
             if not local_name or _PLUGIN_NAME.fullmatch(local_name) is None:
                 raise ValueError(
@@ -184,10 +177,7 @@ class ToolRegistry:
             tool=self._tools.get(name),
             container=self._container,
         )
-        if self._container is None:
-            return await self._handler(call)
-        async with self._container.scope(Scope.CALL):
-            return await self._handler(call)
+        return await self._handler(call)
 
     def merge(self, other: ToolRegistry, *, replace: bool = False) -> None:
         for tool in other:
@@ -217,15 +207,16 @@ class ToolRegistry:
 def _plugin_methods(
     plugin: object,
 ) -> list[tuple[str, Callable[..., object], ToolDefinition]]:
+    plugin_type = type(plugin)
     attribute_names: list[str] = []
-    for base in reversed(type(plugin).__mro__[:-1]):
+    for base in reversed(plugin_type.__mro__[:-1]):
         for attribute_name in vars(base):
             if attribute_name not in attribute_names:
                 attribute_names.append(attribute_name)
 
     methods: list[tuple[str, Callable[..., object], ToolDefinition]] = []
     for attribute_name in attribute_names:
-        descriptor = inspect.getattr_static(type(plugin), attribute_name)
+        descriptor = inspect.getattr_static(plugin_type, attribute_name)
         descriptor_definition = get_tool_definition(descriptor)
         if isinstance(descriptor, (classmethod, staticmethod)):
             definition = descriptor_definition or get_tool_definition(
@@ -247,3 +238,19 @@ def _plugin_methods(
             )
         methods.append((attribute_name, method, definition))
     return methods
+
+
+def _reject_plugin_method_injection(
+    method_name: str,
+    method: Callable[..., object],
+) -> None:
+    hints = get_type_hints(method, include_extras=True)
+    for parameter_name, annotation in hints.items():
+        if get_origin(annotation) is Annotated and _INJECT_MARKER in get_args(
+            annotation
+        ):
+            raise TypeError(
+                f"Plugin tool '{method_name}' cannot inject parameter "
+                f"'{parameter_name}'; declare runtime dependencies on the "
+                "plugin constructor"
+            )

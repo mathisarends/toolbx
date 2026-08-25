@@ -3,39 +3,18 @@ from __future__ import annotations
 import inspect
 from collections.abc import AsyncGenerator, AsyncIterator, Callable, Iterator, Mapping
 from contextlib import AsyncExitStack, asynccontextmanager
-from contextvars import ContextVar
-from dataclasses import dataclass, field
-from enum import IntEnum
+from dataclasses import dataclass
 from types import MappingProxyType, TracebackType
-from typing import Any, get_args, get_origin, get_type_hints
+from typing import Any, Self, get_args, get_origin, get_type_hints
+
+_PROVIDE_MARKER = object()
 
 
-class Scope(IntEnum):
-    """Lifetime of a dependency, from longest to shortest lived."""
-
-    APP = 0
-    TURN = 1
-    CALL = 2
-
-
-@dataclass(frozen=True, slots=True)
-class _ProvideMetadata:
-    scope: Scope
-
-
-def provide[F: Callable[..., Any]](
-    func: F | None = None,
-    *,
-    scope: Scope = Scope.CALL,
-) -> F | Callable[[F], F]:
-    """Mark a ``DependencyProvider`` method as a dependency factory."""
-
-    def decorate(factory: F) -> F:
-        factory_with_metadata: Any = factory
-        factory_with_metadata.__dependency_provider__ = _ProvideMetadata(Scope(scope))
-        return factory
-
-    return decorate(func) if func is not None else decorate
+def provide[F: Callable[..., Any]](func: F) -> F:
+    """Mark a ``DependencyProvider`` method as a singleton factory."""
+    factory: Any = func
+    factory.__dependency_provider__ = _PROVIDE_MARKER
+    return func
 
 
 class DependencyProvider:
@@ -47,42 +26,25 @@ class _Definition:
     dependency: type
     factory: Callable[..., Any]
     dependencies: Mapping[str, type]
-    scope: Scope
     is_generator: bool
     is_async_generator: bool
 
 
-@dataclass(slots=True)
-class _ScopeState:
-    scope: Scope
-    stack: AsyncExitStack = field(default_factory=AsyncExitStack)
-    values: dict[type, Any] = field(default_factory=dict)
-    pending: dict[type, Any] = field(default_factory=dict)
-
-
 class DependencyContainer:
-    """Validated dependency graph and owner of dependency lifetimes."""
+    """Validated dependency graph containing one instance per type."""
 
-    def __init__(
-        self,
-        *providers: DependencyProvider,
-    ) -> None:
+    def __init__(self, *providers: DependencyProvider) -> None:
         self._definitions = MappingProxyType(self._collect(providers))
         self._validate_graph()
-        self._app_state: _ScopeState | None = None
-        self._turn_state: ContextVar[_ScopeState | None] = ContextVar(
-            f"turn_scope_{id(self)}", default=None
-        )
-        self._call_state: ContextVar[_ScopeState | None] = ContextVar(
-            f"call_scope_{id(self)}", default=None
-        )
+        self._stack = AsyncExitStack()
+        self._values: dict[type, Any] = {}
+        self._pending: dict[type, Any] = {}
+        self._entered = False
 
-    async def __aenter__(self) -> DependencyContainer:
-        if self._app_state is not None:
-            raise RuntimeError("The application scope is already active")
-        state = _ScopeState(Scope.APP)
-        await state.stack.__aenter__()
-        self._app_state = state
+    async def __aenter__(self) -> Self:
+        if self._entered:
+            raise RuntimeError("The dependency container is already active")
+        self._entered = True
         return self
 
     async def __aexit__(
@@ -91,100 +53,68 @@ class DependencyContainer:
         exc_value: BaseException | None,
         traceback: TracebackType | None,
     ) -> bool | None:
-        state = self._app_state
         try:
-            if state is not None:
-                return await state.stack.__aexit__(exc_type, exc_value, traceback)
-            return None
+            return await self._stack.__aexit__(exc_type, exc_value, traceback)
         finally:
-            self._app_state = None
+            self._reset()
 
-    @asynccontextmanager
-    async def scope(self, scope: Scope) -> AsyncGenerator[DependencyContainer]:
-        scope = Scope(scope)
-        if scope is Scope.APP:
-            raise ValueError("Use 'async with container' to open the APP scope")
-        if self._app_state is None:
-            raise RuntimeError("The APP scope is not active")
-
-        variable = self._turn_state if scope is Scope.TURN else self._call_state
-        if variable.get() is not None:
-            raise RuntimeError(f"The {scope.name} scope is already active")
-        state = _ScopeState(scope)
-        await state.stack.__aenter__()
-        token = variable.set(state)
+    async def aclose(self) -> None:
+        """Close singleton resources and clear all resolved instances."""
         try:
-            yield self
-        except BaseException as error:
-            suppressed = await state.stack.__aexit__(
-                type(error), error, error.__traceback__
-            )
-            if not suppressed:
-                raise
-        else:
-            await state.stack.__aexit__(None, None, None)
+            await self._stack.aclose()
         finally:
-            variable.reset(token)
+            self._reset()
 
     async def get[T](self, dependency: type[T]) -> T:
-        """Resolve one dependency in the currently active scopes."""
+        """Resolve and cache one registered dependency."""
         definition = self._definitions.get(dependency)
         if definition is None:
             name = getattr(dependency, "__name__", repr(dependency))
             raise LookupError(f"No dependency provider is registered for '{name}'")
-        state = self._state_for(definition.scope)
-        if dependency in state.values:
-            return state.values[dependency]
+        return await self._resolve(dependency, lambda: self._create(definition))
 
-        # One task performs construction; concurrent users await the same result.
-        pending = state.pending.get(dependency)
+    def has(self, dependency: type) -> bool:
+        return dependency in self._definitions
+
+    async def _resolve[T](
+        self,
+        dependency: type[T],
+        factory: Callable[[], Any],
+    ) -> T:
+        if dependency in self._values:
+            return self._values[dependency]
+        pending = self._pending.get(dependency)
         if pending is not None:
             return await pending
 
         import asyncio
 
         future = asyncio.get_running_loop().create_future()
-        state.pending[dependency] = future
+        self._pending[dependency] = future
         try:
-            value = await self._create(definition, state)
-            state.values[dependency] = value
+            value = factory()
+            value = await value if inspect.isawaitable(value) else value
+            self._values[dependency] = value
             future.set_result(value)
             return value
         except BaseException as error:
             future.set_exception(error)
-            # The creator observes the exception directly; consume the future's
-            # exception when nobody else was waiting for it.
             future.exception()
             raise
         finally:
-            state.pending.pop(dependency, None)
+            self._pending.pop(dependency, None)
 
-    def has(self, dependency: type) -> bool:
-        return dependency in self._definitions
-
-    def _state_for(self, scope: Scope) -> _ScopeState:
-        if self._app_state is None:
-            raise RuntimeError("The APP scope is not active")
-        if scope is Scope.APP:
-            return self._app_state
-        state = (
-            self._turn_state.get() if scope is Scope.TURN else self._call_state.get()
-        )
-        if state is None:
-            raise RuntimeError(f"The {scope.name} scope is not active")
-        return state
-
-    async def _create(self, definition: _Definition, state: _ScopeState) -> Any:
+    async def _create(self, definition: _Definition) -> Any:
         kwargs = {
             name: await self.get(required)
             for name, required in definition.dependencies.items()
         }
         if definition.is_async_generator:
             manager = asynccontextmanager(definition.factory)(**kwargs)
-            return await state.stack.enter_async_context(manager)
+            return await self._stack.enter_async_context(manager)
         if definition.is_generator:
             manager = _async_context_from_generator(definition.factory, kwargs)
-            return await state.stack.enter_async_context(manager)
+            return await self._stack.enter_async_context(manager)
         value = definition.factory(**kwargs)
         return await value if inspect.isawaitable(value) else value
 
@@ -197,8 +127,10 @@ class DependencyContainer:
             if not isinstance(provider, DependencyProvider):
                 raise TypeError("Providers must inherit from DependencyProvider")
             for _, factory in inspect.getmembers(provider, predicate=inspect.ismethod):
-                metadata = getattr(factory, "__dependency_provider__", None)
-                if metadata is None:
+                if (
+                    getattr(factory, "__dependency_provider__", None)
+                    is not _PROVIDE_MARKER
+                ):
                     continue
                 hints = get_type_hints(factory, include_extras=True)
                 annotation = hints.get("return")
@@ -221,7 +153,6 @@ class DependencyContainer:
                     dependency=dependency,
                     factory=factory,
                     dependencies=MappingProxyType(required),
-                    scope=metadata.scope,
                     is_generator=inspect.isgeneratorfunction(factory),
                     is_async_generator=inspect.isasyncgenfunction(factory),
                 )
@@ -230,18 +161,11 @@ class DependencyContainer:
     def _validate_graph(self) -> None:
         for definition in self._definitions.values():
             for required in definition.dependencies.values():
-                target = self._definitions.get(required)
-                if target is None:
+                if required not in self._definitions:
                     name = getattr(required, "__name__", repr(required))
                     raise ValueError(
                         f"Missing dependency provider for '{name}', required by "
                         f"'{definition.dependency.__name__}'"
-                    )
-                if target.scope > definition.scope:
-                    raise ValueError(
-                        f"Invalid scope dependency: {definition.scope.name} "
-                        f"'{definition.dependency.__name__}' depends on "
-                        f"{target.scope.name} '{target.dependency.__name__}'"
                     )
 
         visiting: set[type] = set()
@@ -260,6 +184,12 @@ class DependencyContainer:
 
         for dependency in self._definitions:
             visit(dependency)
+
+    def _reset(self) -> None:
+        self._stack = AsyncExitStack()
+        self._values.clear()
+        self._pending.clear()
+        self._entered = False
 
 
 def _provided_type(annotation: Any, factory: Callable[..., Any]) -> type:

@@ -79,7 +79,7 @@ async def test_plugin_registers_bound_methods_with_names_and_metadata() -> None:
 def test_plugin_methods_work_with_structured_output_tools() -> None:
     tools = StructuredOutputTools()
     tools.add_plugin(SearchPlugin("docs"), name="knowledge")
-    models = tools.create_tool_models(["knowledge_search"])
+    models = tools.create_models(["knowledge_search"])
     assert [model.__name__ for model in models] == ["KnowledgeSearchTool"]
     assert set(models[0].model_fields) == {"knowledge_search"}
 

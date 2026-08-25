@@ -23,7 +23,7 @@ def multiply(params: MultiplyParams) -> int:
 
 
 async def main() -> None:
-    [MultiplyTool] = tools.create_tool_models(base_model=AgentResponse)
+    [MultiplyTool] = tools.create_models(base_model=AgentResponse)
 
     # Pass MultiplyTool to an LLM client as its structured-output model.
     response = MultiplyTool.model_validate(

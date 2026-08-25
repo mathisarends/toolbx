@@ -419,7 +419,7 @@ tools = StructuredOutputTools()
 async def search(query: str) -> list[str]: ...
 
 
-[SearchTool] = tools.create_tool_models(base_model=AgentResponse)
+[SearchTool] = tools.create_models(base_model=AgentResponse)
 
 # Give SearchTool to the LLM as its structured-output model.
 response = SearchTool.model_validate(
@@ -432,7 +432,7 @@ response = SearchTool.model_validate(
 await tools.execute("search", response.search.model_dump())
 ```
 
-`create_tool_models()` returns only tools available in the active context.
+`create_models()` returns only tools available in the active context.
 Pass `include_tools=[...]` to limit the choices, or `context=...` to derive
 them for a particular request. `StructuredOutputTools` shares registration,
 availability, middleware, execution, and merging with `Tools`; it differs

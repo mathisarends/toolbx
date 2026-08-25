@@ -131,7 +131,7 @@ def test_tool_models_support_structured_output_and_a_custom_base() -> None:
     def noop() -> None:
         pass
 
-    models = tools.create_tool_models(
+    models = tools.create_models(
         ["search"],
         base_model=StructuredResponse,
     )
@@ -156,13 +156,13 @@ def test_tool_models_respect_contextual_availability() -> None:
     def search(query: str) -> None:
         pass
 
-    assert tools.create_tool_models() == []
-    models = tools.create_tool_models(context=ToolContext(SearchClient()))
+    assert tools.create_models() == []
+    models = tools.create_models(context=ToolContext(SearchClient()))
     assert [model.__name__ for model in models] == ["SearchTool"]
 
 
 def test_tool_representations_expose_only_their_own_interface() -> None:
-    assert not hasattr(Tools(), "create_tool_models")
+    assert not hasattr(Tools(), "create_models")
     assert not hasattr(StructuredOutputTools(), "get_schema")
 
 

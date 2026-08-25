@@ -11,7 +11,7 @@ class StructuredOutputTools(ToolRegistry):
     """Tools exposed as mutually exclusive structured-output models."""
 
     @overload
-    def create_tool_models[ModelT: BaseModel](
+    def create_models[ModelT: BaseModel](
         self,
         include_tools: Iterable[str] | None = None,
         *,
@@ -20,14 +20,14 @@ class StructuredOutputTools(ToolRegistry):
     ) -> list[type[ModelT]]: ...
 
     @overload
-    def create_tool_models(
+    def create_models(
         self,
         include_tools: Iterable[str] | None = None,
         *,
         context: ToolContext | None = None,
     ) -> list[type[BaseModel]]: ...
 
-    def create_tool_models(
+    def create_models(
         self,
         include_tools: Iterable[str] | None = None,
         *,

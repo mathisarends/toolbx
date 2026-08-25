@@ -56,7 +56,7 @@ async def main() -> None:
     tools.add_plugin(CatalogPlugin(catalog), name="catalog")
 
     # Give these generated models to an LLM as its structured-output choices.
-    [CatalogSearchTool] = tools.create_tool_models(base_model=AgentResponse)
+    [CatalogSearchTool] = tools.create_models(base_model=AgentResponse)
 
     # This simulates the structured response returned by the LLM.
     response = CatalogSearchTool.model_validate(

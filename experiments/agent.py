@@ -27,14 +27,12 @@ class Agent:
         system_prompt: str | Callable[[], str] | None = None,
         on_tool_call: OnToolCall | None = None,
         on_tool_result: OnToolResult | None = None,
-        confirm: Callable[[str, dict[str, Any]], bool] | None = None,
     ) -> None:
         self._model = model
         self._toolbox = toolbox
         self._messages: list[Message] = []
         self._on_tool_call = on_tool_call
         self._on_tool_result = on_tool_result
-        self._confirm = confirm
         self._system_prompt: Callable[[], str] | None
         if isinstance(system_prompt, str):
             self._system_prompt = None
@@ -101,14 +99,6 @@ class Agent:
             arguments = json.loads(call.function.arguments or "{}")
             if self._on_tool_call:
                 self._on_tool_call(call.function.name, arguments)
-            tool = self._toolbox.get(call.function.name)
-            if (
-                tool is not None
-                and self._confirm is not None
-                and tool.approval_required(arguments)
-                and not self._confirm(call.function.name, arguments)
-            ):
-                return PermissionError("Declined by user")
             return await self._toolbox.execute(
                 call.function.name, arguments, call_id=call.id
             )

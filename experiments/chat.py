@@ -7,7 +7,13 @@ from pydantic import BaseModel, Field
 from experiments.agent import Agent
 from experiments.environments import Console
 from experiments.model import experiment_model
-from toolbx import CallLoggingMiddleware, Toolbox, Toolset, tool
+from toolbx import (
+    ApprovalMiddleware,
+    CallLoggingMiddleware,
+    Toolbox,
+    Toolset,
+    tool,
+)
 
 
 @dataclass
@@ -37,7 +43,11 @@ class DemoTools(Toolset, namespace=None):
     def get_current_time(self) -> str:
         return dt.datetime.now().isoformat()
 
-    @tool("Add two numbers", params=AddParams)
+    @tool(
+        "Add two numbers",
+        params=AddParams,
+        requires_approval=lambda params: abs(params.a + params.b) > 1_000,
+    )
     def add(self, params: AddParams) -> float:
         return params.a + params.b
 
@@ -66,11 +76,11 @@ class DemoTools(Toolset, namespace=None):
 
 
 async def main() -> None:
+    console = Console()
     toolbox = Toolbox(
         DemoTools(UserInfo(name="Mathis", is_admin=True)),
-        middleware=[CallLoggingMiddleware()],
+        middleware=[CallLoggingMiddleware(), ApprovalMiddleware(console.confirm)],
     )
-    console = Console(toolbox)
     model = experiment_model("gpt-5.6-terra", on_retry=console.on_retry)
     agent = Agent(
         model,
@@ -78,9 +88,8 @@ async def main() -> None:
         system_prompt="You are a helpful assistant.",
         on_tool_call=console.on_tool_call,
         on_tool_result=console.on_tool_result,
-        confirm=console.confirm,
     )
-    console.print_tools()
+    console.print_tools(toolbox)
     await console.run(agent, "Chat gestartet. 'exit' zum Beenden.")
 
 

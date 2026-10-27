@@ -5,7 +5,7 @@ from typing import Any
 from llmify import RetryableError, RetryEvent
 
 from experiments.agent import Agent
-from toolbx.tools import Toolbox
+from toolbx import Toolbox, ToolCall
 
 # Second line of defence behind llmify's own retries: those cover a burst of a
 # few seconds, these cover an outage that lasts minutes.
@@ -14,12 +14,6 @@ _RESUME_DELAYS = (15.0, 45.0, 120.0)
 
 class Console:
     """Shared terminal UI for the interactive experiments."""
-
-    def __init__(
-        self,
-        toolbox: Toolbox,
-    ) -> None:
-        self._toolbox = toolbox
 
     def on_tool_call(self, name: str, arguments: dict[str, Any]) -> None:
         print(f"  -> {name}({arguments})")
@@ -37,18 +31,20 @@ class Console:
             f"in {event.delay:.1f}s: {event.error}"
         )
 
-    def confirm(self, name: str, arguments: dict[str, Any]) -> bool:
-        answer = input(f"  ?? approve '{name}({arguments})'? [y/N] ")
+    def confirm(self, call: ToolCall) -> bool:
+        answer = input(f"  ?? approve '{call.name}({call.arguments})'? [y/N] ")
         return answer.strip().lower() == "y"
 
-    def print_tools(self) -> None:
+    def print_tools(self, toolbox: Toolbox) -> None:
         print("Available tools:")
-        for tool in self._toolbox:
+        for tool in toolbox:
             if not tool.is_available():
                 continue
             flags = []
-            if tool.requires_approval:
-                flags.append("requires_approval")
+            if callable(tool.requires_approval):
+                flags.append("conditional approval")
+            elif tool.requires_approval:
+                flags.append("requires approval")
             if tool.available_when is not None:
                 flags.append("gated")
             flag_text = f" [{', '.join(flags)}]" if flags else ""

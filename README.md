@@ -178,7 +178,11 @@ contains the name, parsed `arguments`, optional `call_id` and registered tool.
 JSON decoding happens before middleware dispatch. Use
 `dataclasses.replace(call, arguments=...)` when forwarding changed arguments.
 
-`@tool` supports `name`, `tags`, `metadata` and `requires_approval`. These runtime
+Without a description argument, `@tool()` uses the method's docstring; a tool
+with neither is rejected at class definition.
+
+`@tool` supports the keyword-only `name`, `tags`, `metadata` and
+`requires_approval`. These runtime
 hints are available through `toolbox.get(name)` and iteration. Approval remains
 an agent-loop responsibility; `requires_approval` does not gate execution.
 
@@ -206,6 +210,8 @@ This API deliberately breaks earlier versions:
   `ToolSchema.input_schema` replace `parameters`; `ToolCall.arguments` replaces
   `raw_args`; `tool.metadata` replaces `tool.extra` and `ToolMetadata` is
   removed; `OutputBudget.truncate()` replaces `shape()`.
+- `@tool` accepts `name` only as a keyword and rejects tools without a
+  description or docstring.
 
 ## Examples and development
 

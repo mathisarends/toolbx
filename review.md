@@ -31,16 +31,6 @@ die Toolset-Instanz erhalten.
 fehlen `__getitem__`, `__contains__`, `names`, `remove`/`unregister` und eine
 Teilmenge oder Ansicht (`toolbox.subset(tags=…)`), z. B. für Sub-Agenten.
 
-### E11 – Dekorator-Signatur
-
-- `name` ist der zweite **positionale** Parameter:
-  `@tool("desc", "name")` liest sich schlecht. Er sollte nur als Keyword
-  erlaubt sein.
-- Fehlt die Beschreibung, wird sie still zu `""` (bestätigt). Die Docstring
-  wird ignoriert. Erwartet wäre: Docstring als Fallback, idealerweise mit
-  `Args:`-Abschnitt als Beschreibung der Felder. Oder zumindest eine Warnung,
-  wenn die Beschreibung leer ist.
-
 ### E12 – Das Schema enthält viel Ballast
 
 Pydantic erzeugt für jedes Feld `title` (`"title": "Q"`), dazu ein

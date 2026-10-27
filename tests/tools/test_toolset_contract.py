@@ -1,6 +1,6 @@
 import pytest
 
-from toolbx import Toolbox, Toolset, tool
+from toolbx import Tool, Toolbox, Toolset, tool
 
 
 @pytest.mark.asyncio
@@ -116,3 +116,40 @@ def test_callable_objects_cannot_replace_decorated_methods() -> None:
 
         class Invalid(Toolset):
             invalid = tool("Invalid")(CallableObject())
+
+
+def test_docstring_is_the_description_fallback() -> None:
+    class DocTools(Toolset, namespace=None):
+        @tool()
+        def lookup(self) -> None:
+            """Look up a record.
+
+            Returns nothing yet.
+            """
+
+        @tool("Explicit wins")
+        def other(self) -> None:
+            """Ignored docstring."""
+
+    toolbox = Toolbox(DocTools())
+    assert toolbox.get("lookup").description == (
+        "Look up a record.\n\nReturns nothing yet."
+    )
+    assert toolbox.get("other").description == "Explicit wins"
+
+
+def test_tools_without_description_or_docstring_are_rejected() -> None:
+    with pytest.raises(ValueError, match="'silent' needs a description"):
+
+        class Silent(Toolset):
+            @tool()
+            def silent(self) -> None:
+                pass
+
+    with pytest.raises(ValueError, match="'direct' needs a description"):
+        Tool("direct", "", lambda: None)
+
+
+def test_tool_name_is_keyword_only() -> None:
+    with pytest.raises(TypeError):
+        tool("Description", "name")  # type: ignore[misc]

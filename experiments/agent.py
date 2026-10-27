@@ -104,8 +104,8 @@ class Agent:
             tool = self._toolbox.get(call.function.name)
             if (
                 tool is not None
-                and tool.requires_approval
                 and self._confirm is not None
+                and tool.approval_required(arguments)
                 and not self._confirm(call.function.name, arguments)
             ):
                 return PermissionError("Declined by user")

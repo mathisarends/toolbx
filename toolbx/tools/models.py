@@ -7,6 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from toolbx.tools.json_schema import drop_omitted_nulls
 from toolbx.tools.schema import (
     ToolSchema,
     _params_parameter,
@@ -26,7 +27,7 @@ class Tool:
         params_model: type[BaseModel] | None = None,
         tags: Collection[str] = (),
         metadata: Mapping[str, Any] | None = None,
-        requires_approval: bool = False,
+        requires_approval: bool | Callable[[Any], bool] = False,
         available_when: Callable[[Any], bool] | None = None,
         namespace: str | None = None,
         local_name: str | None = None,
@@ -56,6 +57,16 @@ class Tool:
             if self.available_when is None
             else self.available_when(self.fn.__self__)
         )
+
+    def validate(self, arguments: Mapping[str, Any]) -> BaseModel:
+        return self._input_model.model_validate(
+            drop_omitted_nulls(dict(arguments), self.input_schema)
+        )
+
+    def approval_required(self, arguments: Mapping[str, Any]) -> bool:
+        if callable(self.requires_approval):
+            return bool(self.requires_approval(self.validate(arguments)))
+        return self.requires_approval
 
     def to_schema(self) -> ToolSchema:
         return ToolSchema(

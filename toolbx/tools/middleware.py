@@ -1,3 +1,4 @@
+import inspect
 import logging
 import time
 from collections.abc import Awaitable, Callable, Mapping, Sequence
@@ -66,6 +67,45 @@ class CallLoggingMiddleware(ToolMiddleware):
         finally:
             elapsed_ms = (time.perf_counter() - started) * 1000
             logger.info("[tool] %s finished (%.0f ms)", call.name, elapsed_ms)
+
+
+type ApprovalCallback = Callable[[ToolCall], Awaitable[bool] | bool]
+
+
+class ApprovalMiddleware(ToolMiddleware):
+    """Ask ``confirm`` before running a tool that requires approval.
+
+    A declined call returns ``decline_message`` instead of raising, so the
+    model learns the user said no and can continue the conversation.
+    """
+
+    def __init__(
+        self,
+        confirm: ApprovalCallback,
+        *,
+        decline_message: str = "Tool call declined by the user",
+    ) -> None:
+        self._confirm = confirm
+        self._decline_message = decline_message
+
+    async def __call__(
+        self,
+        call: ToolCall,
+        call_next: ToolHandler,
+    ) -> object:
+        tool = call.tool
+        # Unknown and unavailable tools fall through so the toolbox reports
+        # them instead of asking the user about a call that cannot run.
+        if tool is None or not tool.is_available():
+            return await call_next(call)
+        if tool.approval_required(call.arguments):
+            approved = self._confirm(call)
+            if inspect.isawaitable(approved):
+                approved = await approved
+            if not approved:
+                logger.info("[tool] %s declined", call.name)
+                return self._decline_message
+        return await call_next(call)
 
 
 def compose(

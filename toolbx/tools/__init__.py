@@ -1,5 +1,7 @@
 from .decorators import tool
 from .middleware import (
+    ApprovalCallback,
+    ApprovalMiddleware,
     CallLoggingMiddleware,
     ErrorBoundaryMiddleware,
     ToolCall,
@@ -13,6 +15,8 @@ from .toolbox import Toolbox
 from .toolset import Toolset
 
 __all__ = [
+    "ApprovalCallback",
+    "ApprovalMiddleware",
     "CallLoggingMiddleware",
     "ErrorBoundaryMiddleware",
     "Tool",

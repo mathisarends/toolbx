@@ -8,7 +8,6 @@ from types import EllipsisType
 from typing import Any
 
 from toolbx.tools.arguments import resolve_arguments
-from toolbx.tools.json_schema import drop_omitted_nulls
 from toolbx.tools.middleware import ToolCall, ToolMiddleware, ToolRequest, compose
 from toolbx.tools.models import Tool
 from toolbx.tools.schema import ToolSchema
@@ -237,9 +236,7 @@ class Toolbox:
             ]
             raise LookupError(f"Unknown tool '{call.name}'. Available: {available}")
 
-        params = tool._input_model.model_validate(
-            drop_omitted_nulls(call.arguments, tool.input_schema)
-        )
+        params = tool.validate(call.arguments)
         arguments = resolve_arguments(tool, params)
         return await tool._invoke(arguments)
 

@@ -1,5 +1,7 @@
 from .output import OutputBudget, to_text
 from .tools import (
+    ApprovalCallback,
+    ApprovalMiddleware,
     CallLoggingMiddleware,
     ErrorBoundaryMiddleware,
     Tool,
@@ -15,6 +17,8 @@ from .tools import (
 )
 
 __all__ = [
+    "ApprovalCallback",
+    "ApprovalMiddleware",
     "CallLoggingMiddleware",
     "ErrorBoundaryMiddleware",
     "OutputBudget",

@@ -204,9 +204,34 @@ Without a description argument, `@tool()` uses the method's docstring; a tool
 with neither is rejected at class definition.
 
 `@tool` supports the keyword-only `name`, `tags`, `metadata` and
-`requires_approval`. These runtime
-hints are available through `toolbox.get(name)` and iteration. Approval remains
-an agent-loop responsibility; `requires_approval` does not gate execution.
+`requires_approval`. These runtime hints are available through
+`toolbox.get(name)` and iteration.
+
+### Approval
+
+`requires_approval` is either a bool or a predicate over the validated params.
+`ApprovalMiddleware` enforces it: it calls a sync or async `confirm(call)` and
+returns a decline message instead of running the tool when the answer is no.
+
+```python
+from toolbx import ApprovalMiddleware
+
+
+class BankTools(Toolset):
+    @tool("Transfer money", params=Transfer, requires_approval=lambda p: p.amount > 100)
+    def transfer(self, params: Transfer) -> str: ...
+
+
+async def confirm(call: ToolCall) -> bool:
+    return await ask_user(f"Run {call.name}({call.arguments})?")
+
+
+toolbox = Toolbox(BankTools(), middleware=[ApprovalMiddleware(confirm)])
+```
+
+Without the middleware, `requires_approval` does not gate execution;
+`tool.approval_required(arguments)` evaluates it for custom agent loops. Invalid
+arguments fail validation before the user is asked.
 
 Exported schemas are independent copies and can be transformed without changing
 the registered tool. `OutputBudget(max_chars=20_000)` caps long text, including
@@ -233,6 +258,7 @@ This API deliberately breaks earlier versions:
   `raw_args`; `tool.metadata` replaces `tool.extra` and `ToolMetadata` is
   removed; `OutputBudget.truncate()` replaces `shape()`.
 - Exported schemas no longer contain Pydantic `title` keys.
+- `ApprovalMiddleware` replaces hand-written approval checks before `execute`.
 - `@tool` accepts `name` only as a keyword and rejects tools without a
   description or docstring.
 

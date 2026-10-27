@@ -7,18 +7,6 @@ gelöscht; verbleibende IDs bleiben stabil.
 
 ## 1. Ergonomie und API-Design
 
-### E6 – Approval
-
-`requires_approval` ist ein statisches Bool und wird nicht durchgesetzt. Die
-Middleware-Kette wäre der richtige Ort dafür:
-
-```python
-ApprovalMiddleware(confirm=async_confirm)       # gibt standardisierten Decline zurück
-@tool(..., requires_approval=lambda p: p.amount > 100)  # abhängig von den Argumenten
-```
-
-Dann muss nicht jede App den Check vor `execute` nachbauen.
-
 ### E8 – Dynamische Beschreibungen · offen
 
 Sollen Beschreibungen dynamisch aus dem Zustand einer Toolset-Instanz

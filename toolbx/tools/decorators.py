@@ -18,7 +18,7 @@ class ToolDefinition:
     description: str
     name: str | None
     params: type[BaseModel] | None
-    requires_approval: bool
+    requires_approval: bool | Callable[[Any], bool]
     available_when: Callable[[Any], bool] | None
     tags: tuple[str, ...]
     metadata: Mapping[str, Any]
@@ -29,7 +29,7 @@ def tool[ParamsT: BaseModel, **CallT, ResultT](
     *,
     name: str | None = None,
     params: type[ParamsT] | None = None,
-    requires_approval: bool = False,
+    requires_approval: bool | Callable[[Any], bool] = False,
     available_when: Callable[[Any], bool] | None = None,
     tags: Sequence[str] = (),
     metadata: Mapping[str, Any] | None = None,
@@ -41,6 +41,9 @@ def tool[ParamsT: BaseModel, **CallT, ResultT](
 
     Without an explicit description, the method's docstring is used. A tool
     without either is rejected, since the model could not tell what it does.
+
+    ``requires_approval`` may be a predicate over the validated params, so
+    approval can depend on the arguments; ``ApprovalMiddleware`` enforces it.
     """
 
     definition = ToolDefinition(

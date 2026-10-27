@@ -2,10 +2,7 @@ import asyncio
 
 from pydantic import BaseModel, Field
 
-from toolbx import Toolbox, Toolset
-from toolbx import tool as mark_tool
-
-toolbox = Toolbox()
+from toolbx import ApprovalMiddleware, Toolbox, ToolCall, Toolset, tool
 
 
 class TransferParams(BaseModel):
@@ -13,24 +10,27 @@ class TransferParams(BaseModel):
     to: str = Field(description="Recipient account")
 
 
-class DefinedTools1(Toolset, namespace=None):
-    @mark_tool(
-        "Transfer money between accounts (needs confirmation)", requires_approval=True
+class BankTools(Toolset, namespace=None):
+    @tool(
+        "Transfer money between accounts",
+        params=TransferParams,
+        requires_approval=lambda params: params.amount > 100,
     )
     def transfer(self, params: TransferParams) -> str:
-        return f"transferred {params.amount} to {params.to}"
+        return f"transferred {params.amount:g} to {params.to}"
 
 
-toolbox.add(DefinedTools1())
+async def confirm(call: ToolCall) -> bool:
+    print(f"approve {call.name}({call.arguments})? -> no")
+    return False
+
+
+toolbox = Toolbox(BankTools(), middleware=[ApprovalMiddleware(confirm)])
 
 
 async def main() -> None:
-    tool = toolbox.get("transfer")
-    assert tool is not None
-    print("requires_approval:", tool.requires_approval)
-    args = TransferParams(amount=50.0, to="acct-42")
-    result = await toolbox.execute("transfer", args.model_dump())
-    print(result)
+    print(await toolbox.execute("transfer", {"amount": 50, "to": "acct-42"}))
+    print(await toolbox.execute("transfer", {"amount": 500, "to": "acct-42"}))
 
 
 if __name__ == "__main__":

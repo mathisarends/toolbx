@@ -50,14 +50,6 @@ weil Groß- und Kleinschreibung zählt.
 **Fix:** Overloads mit `Literal[ToolSchemaFormat.OPENAI, "openai"]` usw.
 schreiben, oder besser getrennte Methoden anbieten (siehe E3).
 
-### B16 – Schemafehler in Toolset-Methoden fallen erst bei `add()` auf · niedrig · bestätigt
-
-Laut README fallen Fehler schon bei der Klassendefinition auf.
-Schemafehler wie variadische Parameter zeigen sich aber erst bei `add()`.
-
-**Fix:** Die Signatur- und Schemaprüfung bereits bei der Klassendefinition
-ausführen, etwa über `collect_tool_entries`.
-
 ### B17 – Parameter ohne Annotation werden still zu `str` · niedrig · bestätigt
 
 `hints.get(name, str)` (`schema.py:87`): `def u(x)` erzeugt
@@ -281,7 +273,7 @@ Die neue API für Availability und Description vorher klären (E8).
 `name` nur als Keyword (E11)
 
 **Weitere Vereinfachungen und Validierung:**
-B10/E3 · B16/B17/R8
+B10/E3 · B17/R8
 (Signaturprüfung und Argumentzuordnung bei Definition bzw. Registrierung) ·
 E2 (`Toolbox` zusammenführen) · Begriffe vereinheitlichen
 (Abschnitt 4, vor allem plugin → toolset)

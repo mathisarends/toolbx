@@ -129,3 +129,18 @@ async def test_optional_error_boundary_names_exceptions_without_text(
 
     toolbox = Toolbox(Failure(), middleware=[ErrorBoundaryMiddleware()])
     assert await toolbox.execute("fail") == f"Tool failed: {exception.__name__}"
+
+
+@pytest.mark.parametrize("explicit_params", [False, True])
+def test_variadic_toolset_methods_fail_at_class_definition(
+    explicit_params: bool,
+) -> None:
+    class Params(BaseModel):
+        value: str
+
+    with pytest.raises(TypeError, match="cannot use variadic parameters"):
+
+        class Invalid(Toolset):
+            @tool("Invalid", params=Params if explicit_params else None)
+            def invalid(self, *values: str) -> None:
+                pass

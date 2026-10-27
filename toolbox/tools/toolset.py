@@ -5,6 +5,7 @@ from types import EllipsisType
 from typing import Any, ClassVar
 
 from toolbox.tools.plugins import ToolDefinition, get_tool_definition
+from toolbox.tools.schema import build_schema
 
 _NAME = re.compile(r"^[A-Za-z0-9_-]+$")
 _WORD_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
@@ -58,6 +59,14 @@ def collect_tool_entries(cls: type) -> tuple[ToolEntry, ...]:
         if local_name in local_names:
             raise ValueError(f"{cls.__name__} defines duplicate tool '{local_name}'")
         local_names.add(local_name)
+        method = descriptor.__get__(object(), cls)
+        if any(
+            parameter.kind
+            in {inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD}
+            for parameter in inspect.signature(method).parameters.values()
+        ):
+            raise TypeError(f"Tool '{attribute_name}' cannot use variadic parameters")
+        build_schema(method, param_model=definition.params)
         entries.append(ToolEntry(attribute_name, local_name, definition))
     return tuple(entries)
 

@@ -58,7 +58,8 @@ class CallLoggingMiddleware(ToolMiddleware):
         call: ToolCall,
         next: ToolHandler,
     ) -> object:
-        logger.info("[tool] %s called with arguments: %r", call.name, call.raw_args)
+        logger.info("[tool] %s called", call.name)
+        logger.debug("[tool] %s arguments: %r", call.name, call.raw_args)
         started = time.perf_counter()
         try:
             return await next(call)

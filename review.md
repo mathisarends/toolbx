@@ -11,12 +11,6 @@ gel?scht; verbleibende IDs bleiben stabil.
 
 ## 1. Dinge, die in der Praxis schieflaufen können
 
-### R5 – `CallLoggingMiddleware` loggt rohe Argumente auf INFO
-
-`middleware.py:54` loggt `call.raw_args` vollständig. Tool-Argumente
-enthalten oft personenbezogene Daten oder Secrets (E-Mails, Tokens, Freitext).
-Besser: DEBUG-Level oder ein `redact=`-Parameter.
-
 ### R6 – Uneinheitliche Behandlung unbekannter Argumente
 
 Bei aus der Signatur erzeugten Models gilt `extra="forbid"`, bei

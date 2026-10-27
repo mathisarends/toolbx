@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from pydantic import BaseModel
 
@@ -180,3 +182,24 @@ async def test_model_parameters_stay_nested_unless_params_is_explicit() -> None:
     assert set(flat.parameters["properties"]) == {"name"}
     assert await toolbox.execute("create", {"user": {"name": "Ada"}}) == "Ada"
     assert await toolbox.execute("create_flat", {"name": "Ada"}) == "Ada"
+
+
+@pytest.mark.asyncio
+async def test_call_logging_keeps_arguments_out_of_info_logs(caplog) -> None:
+    from toolbox import CallLoggingMiddleware
+
+    class Sensitive(Toolset, namespace=None):
+        @tool("Accept a token")
+        def accept(self, token: str) -> None:
+            pass
+
+    toolbox = Toolbox(Sensitive(), middleware=[CallLoggingMiddleware()])
+    with caplog.at_level(logging.INFO, logger="toolbox.tools.middleware"):
+        await toolbox.execute("accept", {"token": "sensitive-value"})
+    assert "accept called" in caplog.text
+    assert "sensitive-value" not in caplog.text
+
+    caplog.clear()
+    with caplog.at_level(logging.DEBUG, logger="toolbox.tools.middleware"):
+        await toolbox.execute("accept", {"token": "sensitive-value"})
+    assert "sensitive-value" in caplog.text

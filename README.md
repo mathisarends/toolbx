@@ -165,6 +165,8 @@ async def trace(call: ToolCall, call_next: ToolHandler) -> object:
 toolbox = Toolbox(CalculatorTools(), middleware=[trace, CallLoggingMiddleware()])
 ```
 
+Call logging emits tool names and durations at INFO; raw arguments require DEBUG.
+
 Middleware runs in declaration order around validation and execution. `ToolCall`
 contains the name, parsed `raw_args`, optional `call_id` and registered tool.
 JSON decoding happens before middleware dispatch. Use

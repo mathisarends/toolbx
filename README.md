@@ -1,9 +1,21 @@
 # toolbx
 
-Provider-neutral tool definitions and execution for Python agents. Define tools
-as instance methods on a `Toolset`, pass dependencies through its constructor,
-and compose the instances with `Toolbox(toolsets=(tools,))`. The package supplies
-schemas, validation and middleware; your application owns the agent loop and adapters.
+[![CI](https://github.com/mathisarends/toolbx/actions/workflows/ci.yaml/badge.svg)](https://github.com/mathisarends/toolbx/actions/workflows/ci.yaml)
+
+Provider-neutral Python SDK for LLM tools. Define typed tools once, export their
+schemas for your model provider, and execute calls through the same validation
+and middleware pipeline.
+
+- Define tools as `@tool` instance methods on a `Toolset`, with shared dependencies
+  passed through its constructor.
+- Compose toolsets explicitly with `Toolbox(toolsets=(search, admin))`.
+- Call Python methods with `call(method, **arguments)` or dispatch model calls
+  with `execute(ToolRequest(...))`.
+- Export provider-neutral, OpenAI and Anthropic schemas from the same definitions.
+- Add dynamic availability, approval, logging and custom middleware.
+
+Your application owns the agent loop and provider adapters. Async tools run on
+the event loop; sync tools run in worker threads.
 
 Requires Python 3.13 or newer.
 
@@ -18,6 +30,8 @@ The distribution name and Python import are both `toolbx`.
 ## Quickstart
 
 ```python
+import asyncio
+
 from toolbx import Toolbox, Toolset, tool
 
 
@@ -27,14 +41,16 @@ class CalculatorTools(Toolset, namespace=None):
         return a + b
 
 
-calculator = CalculatorTools()
-toolbox = Toolbox(toolsets=(calculator,))
-openai_tools = toolbox.to_openai()
-anthropic_tools = toolbox.to_anthropic()
-native_tools = toolbox.schemas()
+async def main() -> None:
+    calculator = CalculatorTools()
+    toolbox = Toolbox(toolsets=(calculator,))
 
-result = await toolbox.call(calculator.add, a=2, b=3)
-assert result == 5
+    result = await toolbox.call(calculator.add, a=2, b=3)
+    print(result)  # 5
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 Tool methods keep their normal Python calling convention and can be called
@@ -48,6 +64,7 @@ For model-generated calls, pass a provider-neutral `ToolRequest` to `execute`:
 ```python
 from toolbx import ToolRequest
 
+toolbox = Toolbox(toolsets=(CalculatorTools(),))
 result = await toolbox.execute(
     ToolRequest("add", '{"a": 2, "b": 3}', call_id="call-1")
 )
@@ -106,6 +123,12 @@ that shape. Only an explicit `params=User` uses `{"name": "Ada"}` at the top lev
 params models; pass `query="keyboard"`, rather than `params=SearchParams(...)`.
 
 ### Schema export
+
+```python
+openai_tools = toolbox.to_openai()
+anthropic_tools = toolbox.to_anthropic()
+native_tools = toolbox.schemas()
+```
 
 Exported schemas are independent copies and can be transformed without changing
 the registered tool. They leave out the `title` keys Pydantic adds to every model and
@@ -314,9 +337,12 @@ Changes since 0.4.0 that break existing code:
 
 ## Examples and development
 
-See `examples/class_based_toolsets.py`, `examples/constructor_dependencies.py`,
-`examples/availability_gating.py`, `examples/schema_export.py`,
-`examples/custom_middleware.py` and `examples/approval.py`.
+- [Class-based toolsets](examples/class_based_toolsets.py)
+- [Constructor dependencies](examples/constructor_dependencies.py)
+- [Dynamic availability](examples/availability_gating.py)
+- [Schema export](examples/schema_export.py)
+- [Custom middleware](examples/custom_middleware.py)
+- [Approval](examples/approval.py)
 
 ```console
 uv sync --locked

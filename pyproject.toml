@@ -1,7 +1,7 @@
 [project]
 name = "toolbx"
 version = "0.4.0"
-description = "Provider-neutral tool definitions and execution for Python agents"
+description = "Provider-neutral Python SDK for LLM tools with typed toolsets, schema exports, validation, async execution, and middleware"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE.md"]
@@ -9,7 +9,16 @@ requires-python = ">=3.13"
 dependencies = [
     "pydantic>=2.13.4",
 ]
-keywords = ["llm", "agents", "tool-calling", "function-calling", "pydantic"]
+keywords = [
+    "llm",
+    "agents",
+    "tool-calling",
+    "function-calling",
+    "json-schema",
+    "pydantic",
+    "asyncio",
+    "middleware",
+]
 # No License classifier: PEP 639 forbids it next to a license expression.
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -27,9 +36,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/mathisarends/agenttoolkit"
-Repository = "https://github.com/mathisarends/agenttoolkit"
-Issues = "https://github.com/mathisarends/agenttoolkit/issues"
+Homepage = "https://github.com/mathisarends/toolbx"
+Repository = "https://github.com/mathisarends/toolbx"
+Issues = "https://github.com/mathisarends/toolbx/issues"
 
 [dependency-groups]
 dev = [

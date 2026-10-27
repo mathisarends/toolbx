@@ -11,7 +11,6 @@ from .context import Inject, ToolContext
 from .middleware import (
     CallLoggingMiddleware,
     ErrorBoundaryMiddleware,
-    SkillRefreshMiddleware,
     ToolCall,
     ToolMiddleware,
 )
@@ -19,7 +18,6 @@ from .models import Tool, ToolMetadata, ToolSchemaFormat
 from .plugins import tool
 from .registry import ToolRegistry
 from .schema import ToolSchema, build_schema
-from .structured import StructuredOutputTools
 from .tools import Tools
 from .toolset import AgentToolset
 
@@ -29,8 +27,6 @@ __all__ = [
     "DependencyProvider",
     "ErrorBoundaryMiddleware",
     "Inject",
-    "SkillRefreshMiddleware",
-    "StructuredOutputTools",
     "Tool",
     "ToolAvailability",
     "ToolCall",

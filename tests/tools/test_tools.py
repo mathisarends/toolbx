@@ -2,13 +2,12 @@ import logging
 from typing import Annotated
 
 import pytest
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 
 from agenttoolkit import (
     CallLoggingMiddleware,
     ErrorBoundaryMiddleware,
     Inject,
-    StructuredOutputTools,
     Tool,
     ToolContext,
     Tools,
@@ -115,55 +114,6 @@ def test_annotated_description_is_included_in_callable_schema() -> None:
 
     parameters = tools.get_schema()[0].parameters
     assert parameters["properties"]["name"]["description"] == "Person to greet"
-
-
-def test_tool_models_support_structured_output_and_a_custom_base() -> None:
-    class StructuredResponse(BaseModel):
-        request_id: str = "generated"
-
-    tools = StructuredOutputTools()
-
-    @tools.tool("Search the documentation")
-    def search(params: SearchParams) -> None:
-        pass
-
-    @tools.tool("Do nothing")
-    def noop() -> None:
-        pass
-
-    models = tools.create_models(
-        ["search"],
-        base_model=StructuredResponse,
-    )
-
-    assert len(models) == 1
-    assert issubclass(models[0], StructuredResponse)
-    response = models[0].model_validate({"search": {"query": "tools"}})
-    assert response.request_id == "generated"
-    assert response.search == SearchParams(query="tools")
-    assert models[0].model_json_schema()["properties"]["search"]["description"] == (
-        "Search the documentation"
-    )
-
-    with pytest.raises(ValidationError, match="extra_forbidden"):
-        models[0].model_validate({"search": {"query": "tools"}, "unexpected": True})
-
-
-def test_tool_models_respect_contextual_availability() -> None:
-    tools = StructuredOutputTools()
-
-    @tools.tool("Search", available_when=provided(SearchClient))
-    def search(query: str) -> None:
-        pass
-
-    assert tools.create_models() == []
-    models = tools.create_models(context=ToolContext(SearchClient()))
-    assert [model.__name__ for model in models] == ["SearchTool"]
-
-
-def test_tool_representations_expose_only_their_own_interface() -> None:
-    assert not hasattr(Tools(), "create_models")
-    assert not hasattr(StructuredOutputTools(), "get_schema")
 
 
 def test_context_controls_availability_and_description() -> None:

@@ -30,8 +30,5 @@ jobs:
       - name: Lint
         run: uv run --locked --python ${{ matrix.python-version }} ruff check .
 
-      - name: Check architecture
-        run: uv run --locked --python ${{ matrix.python-version }} lint-imports
-
       - name: Test with branch coverage
         run: uv run --locked --python ${{ matrix.python-version }} pytest

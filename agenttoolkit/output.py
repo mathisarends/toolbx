@@ -5,10 +5,8 @@ from dataclasses import dataclass
 class OutputBudget:
     """Trims tool output to something a model can absorb, keeping both ends.
 
-    This is a different limit from `CommandLimits.max_output_bytes`: that one
-    bounds how much a process may hold in memory (megabytes), this one bounds
-    how much reaches the context window (kilobytes). A tool applies it to text
-    it is about to return; nothing in the library applies it on its own.
+    A tool applies it to text it is about to return; nothing in the library
+    applies it on its own.
 
     `max_line_chars` exists because a line-based budget alone is no protection
     against minified JSON or a base64 blob, where a single line carries the

@@ -1,6 +1,6 @@
 [project]
 name = "mm-agenttoolkit"
-version = "0.3.1"
+version = "0.4.0"
 description = "Provider-neutral tool definitions and execution for Python agents"
 readme = "README.md"
 license = "MIT"
@@ -8,16 +8,13 @@ license-files = ["LICENSE.md"]
 requires-python = ">=3.13"
 dependencies = [
     "pydantic>=2.13.4",
-    "pyyaml>=6.0.3",
 ]
 
 [dependency-groups]
 dev = [
-    "import-linter>=2.13",
     "pytest>=9.0",
     "pytest-asyncio>=1.0",
     "pytest-cov>=6.0",
-    "python-dotenv>=1.2.2",
     "ruff>=0.9",
 ]
 py-llmify = [
@@ -40,41 +37,6 @@ line-length = 88
 
 [tool.ruff.lint]
 select = ["B", "E", "F", "I", "RUF", "UP"]
-
-[tool.importlinter]
-root_package = "agenttoolkit"
-include_external_packages = true
-
-[[tool.importlinter.contracts]]
-name = "Core does not know about built-ins"
-type = "forbidden"
-source_modules = ["agenttoolkit.tools", "agenttoolkit.skills"]
-forbidden_modules = ["agenttoolkit.builtins"]
-
-[[tool.importlinter.contracts]]
-name = "Package layering"
-type = "layers"
-layers = ["agenttoolkit.builtins", "agenttoolkit.tools"]
-
-[[tool.importlinter.contracts]]
-name = "Command port does not know about backends"
-type = "forbidden"
-source_modules = [
-    "agenttoolkit.builtins.shell.command",
-    "agenttoolkit.builtins.shell.execution",
-    "agenttoolkit.builtins.shell.policy",
-]
-forbidden_modules = ["agenttoolkit.builtins.shell.backends"]
-
-[[tool.importlinter.contracts]]
-name = "Optional dependencies stay isolated"
-type = "forbidden"
-source_modules = [
-    "agenttoolkit.tools",
-    "agenttoolkit.skills",
-    "agenttoolkit.builtins.fs",
-]
-forbidden_modules = ["docker", "e2b_code_interpreter"]
 
 [tool.pytest.ini_options]
 addopts = [

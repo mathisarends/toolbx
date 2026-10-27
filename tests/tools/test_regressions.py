@@ -228,3 +228,20 @@ async def test_unknown_arguments_are_rejected_in_both_definition_styles() -> Non
             await toolbox.execute(name, {"value": 7, "hallucinated": True})
         assert toolbox.get(name).parameters["additionalProperties"] is False
     assert Params.model_config["extra"] == "ignore"
+
+
+@pytest.mark.asyncio
+async def test_execution_uses_the_parameter_binding_resolved_at_registration(
+    monkeypatch,
+) -> None:
+    class Params(BaseModel):
+        value: int
+
+    class Inputs(Toolset, namespace=None):
+        @tool("Read", params=Params)
+        def read(self, params: Params) -> int:
+            return params.value
+
+    toolbox = Toolbox(Inputs())
+    monkeypatch.setattr(Inputs.read, "__annotations__", {"params": "UndefinedType"})
+    assert await toolbox.execute("read", {"value": "7"}) == 7

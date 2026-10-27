@@ -5,8 +5,6 @@ import pytest
 from pydantic import BaseModel
 
 from toolbox import (
-    CallLoggingMiddleware,
-    ErrorBoundaryMiddleware,
     Tool,
     Toolbox,
     ToolCall,
@@ -149,17 +147,10 @@ def test_callable_schema_rejects_variadics_and_requires_input() -> None:
         Tool("variadic_model", "Variadic model", variadic_model)
 
 
-@pytest.mark.asyncio
-async def test_param_model_binding_must_be_unambiguous() -> None:
-    toolbox = Toolbox(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
+def test_param_model_binding_must_be_unambiguous_at_class_definition() -> None:
+    with pytest.raises(ValueError, match="unambiguous"):
 
-    class DefinedTools6(Toolset, namespace=None):
-        @mark_tool("Ambiguous", params=ItemParams)
-        def ambiguous(self, first: object, second: object) -> None:
-            pass
-
-    toolbox.add(DefinedTools6())
-    result = await toolbox.execute("ambiguous", {"item": "document"})
-    assert isinstance(result, str)
-    assert result.startswith("Tool failed: ")
-    assert "unambiguous" in result
+        class Invalid(Toolset):
+            @mark_tool("Ambiguous", params=ItemParams)
+            def ambiguous(self, first: object, second: object) -> None:
+                pass

@@ -73,6 +73,8 @@ Constructor dependencies never appear in the tool schema. With `params=Model`,
 the model fields form the top-level input object and the method receives the
 validated model, including nested model instances. Pydantic performs input
 validation; signature parameters require type annotations.
+An explicit params model requires one receiving method parameter. Its binding
+is checked at class definition and cached for execution.
 Unknown top-level arguments are rejected in both definition styles. Explicit
 params models are adapted without changing the application's model configuration.
 

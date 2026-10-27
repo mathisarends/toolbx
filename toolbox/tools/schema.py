@@ -51,6 +51,27 @@ def _schema_model(
     return _model_from_callable(func)
 
 
+def _params_parameter(
+    func: Callable, param_model: type[BaseModel] | None
+) -> str | None:
+    if param_model is None:
+        return None
+    parameters = inspect.signature(func).parameters
+    get_type_hints(func, include_extras=True)
+    if len(parameters) != 1:
+        raise ValueError(
+            f"Tool '{func.__name__}' uses params model '{param_model.__name__}' "
+            "but has no unambiguous single parameter that can receive it"
+        )
+    name, parameter = next(iter(parameters.items()))
+    if parameter.kind not in {
+        inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        inspect.Parameter.KEYWORD_ONLY,
+    }:
+        raise TypeError(f"Tool parameter '{name}' must accept a keyword argument")
+    return name
+
+
 def _model_from_callable(func: Callable) -> type[BaseModel]:
     signature = inspect.signature(func)
     hints = get_type_hints(func, include_extras=True)

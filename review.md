@@ -11,17 +11,6 @@ gel?scht; verbleibende IDs bleiben stabil.
 
 ## 1. Dinge, die in der Praxis schieflaufen können
 
-### R8 – Typ-Introspektion bei jedem Aufruf
-
-`resolve_arguments` und `_tool_arguments` untersuchen bei jedem Aufruf erneut
-Typannotationen und Signaturen (`arguments.py:18,20,50,52`). Der Teil für
-Injection entfällt mit dem DI-System. Für explizite Params-Models bleibt
-aber die Suche nach dem empfangenden Methodenparameter relevant.
-
-**Vorschlag:** Die Zuordnung validierter Parameter zur gebundenen Methode
-einmal bei der Registrierung ermitteln und wiederverwenden. Nicht auflösbare
-Annotationen und mehrdeutige Params-Zuordnungen sollten dabei früh auffallen.
-
 ### R9 – `OutputBudget` begrenzt die Gesamtlänge nicht
 
 Bei 60 + 40 Zeilen mit je 2000 Zeichen kommen bis zu 200 000 Zeichen durch,

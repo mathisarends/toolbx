@@ -1,4 +1,4 @@
-# Offene Review-Punkte: toolbox 0.4.0
+# Offene Review-Punkte: toolbx 0.4.0
 
 Stand: 2026-10-27. Hier stehen nur noch offene API- und Dokumentationsfragen.
 

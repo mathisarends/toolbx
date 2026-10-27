@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from experiments.agent import Agent
 from experiments.environments import Console
 from experiments.model import experiment_model
-from toolbox import CallLoggingMiddleware, Toolbox, Toolset, tool
+from toolbx import CallLoggingMiddleware, Toolbox, Toolset, tool
 
 
 @dataclass

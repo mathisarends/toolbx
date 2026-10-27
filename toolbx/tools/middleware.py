@@ -4,7 +4,7 @@ from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from toolbox.tools.models import Tool
+from toolbx.tools.models import Tool
 
 logger = logging.getLogger(__name__)
 

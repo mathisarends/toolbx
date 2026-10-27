@@ -6,11 +6,11 @@ from collections.abc import Collection, Iterator, Mapping, Sequence
 from types import EllipsisType
 from typing import Any
 
-from toolbox.tools.arguments import resolve_arguments
-from toolbox.tools.middleware import ToolCall, ToolMiddleware, ToolRequest, compose
-from toolbox.tools.models import Tool, ToolMetadata
-from toolbox.tools.schema import ToolSchema
-from toolbox.tools.toolset import (
+from toolbx.tools.arguments import resolve_arguments
+from toolbx.tools.middleware import ToolCall, ToolMiddleware, ToolRequest, compose
+from toolbx.tools.models import Tool, ToolMetadata
+from toolbx.tools.schema import ToolSchema
+from toolbx.tools.toolset import (
     ToolEntry,
     Toolset,
     collect_tool_entries,

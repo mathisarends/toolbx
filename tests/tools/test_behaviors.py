@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 
-from toolbox import (
+from toolbx import (
     Tool,
     Toolbox,
     ToolCall,
@@ -13,7 +13,7 @@ from toolbox import (
     Toolset,
     build_schema,
 )
-from toolbox import tool as mark_tool
+from toolbx import tool as mark_tool
 
 
 class Service:

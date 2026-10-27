@@ -1,6 +1,6 @@
 import asyncio
 
-from toolbox import Toolbox, Toolset, tool
+from toolbx import Toolbox, Toolset, tool
 
 
 class SearchClient:

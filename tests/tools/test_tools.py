@@ -4,13 +4,13 @@ from typing import Annotated
 import pytest
 from pydantic import BaseModel, Field
 
-from toolbox import (
+from toolbx import (
     CallLoggingMiddleware,
     ErrorBoundaryMiddleware,
     Toolbox,
     Toolset,
 )
-from toolbox import tool as mark_tool
+from toolbx import tool as mark_tool
 
 
 class SearchParams(BaseModel):
@@ -84,7 +84,7 @@ async def test_tool_errors_are_logged_and_returned_by_the_boundary(
             raise RuntimeError("secret")
 
     toolbox.add(DefinedTools4())
-    with caplog.at_level(logging.ERROR, logger="toolbox.tools.middleware"):
+    with caplog.at_level(logging.ERROR, logger="toolbx.tools.middleware"):
         result = await toolbox.execute("internal_failure")
     assert "Tool 'internal_failure' failed" in caplog.text
     assert result == "Tool failed: secret"

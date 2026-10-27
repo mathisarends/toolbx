@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from types import EllipsisType
 from typing import Any, ClassVar
 
-from toolbox.tools.decorators import ToolDefinition, get_tool_definition
-from toolbox.tools.schema import _params_parameter, build_schema
+from toolbx.tools.decorators import ToolDefinition, get_tool_definition
+from toolbx.tools.schema import _params_parameter, build_schema
 
 _NAME = re.compile(r"^[A-Za-z0-9_-]+$")
 _WORD_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")

@@ -13,7 +13,7 @@ from llmify import (
 )
 from pydantic import BaseModel
 
-from toolbox.tools import Toolbox
+from toolbx.tools import Toolbox
 
 
 def _json_default(value: Any) -> Any:

@@ -1,6 +1,6 @@
 import pytest
 
-from toolbox import OutputBudget
+from toolbx import OutputBudget
 
 
 def test_short_output_passes_through_unchanged() -> None:

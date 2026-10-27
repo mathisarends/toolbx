@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-_TOOL_DEFINITION_ATTRIBUTE = "__toolbox_tool_definition__"
+_TOOL_DEFINITION_ATTRIBUTE = "__toolbx_tool_definition__"
 
 
 @dataclass(frozen=True, slots=True)

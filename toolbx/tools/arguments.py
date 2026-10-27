@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from toolbox.tools.models import Tool
+from toolbx.tools.models import Tool
 
 
 def resolve_arguments(tool: Tool, params: BaseModel) -> dict[str, Any]:

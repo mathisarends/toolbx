@@ -1,7 +1,7 @@
 import pytest
 
-from toolbox import Toolbox, Toolset, tool
-from toolbox import tool as mark_tool
+from toolbx import Toolbox, Toolset, tool
+from toolbx import tool as mark_tool
 
 
 class CatalogService:

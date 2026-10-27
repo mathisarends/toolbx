@@ -2,8 +2,8 @@ import asyncio
 
 from pydantic import BaseModel, Field
 
-from toolbox import Toolbox, Toolset
-from toolbox import tool as mark_tool
+from toolbx import Toolbox, Toolset
+from toolbx import tool as mark_tool
 
 toolbox = Toolbox()
 

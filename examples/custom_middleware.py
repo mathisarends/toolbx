@@ -1,9 +1,9 @@
 import asyncio
 import time
 
-from toolbox import CallLoggingMiddleware, ErrorBoundaryMiddleware, Toolbox, Toolset
-from toolbox import tool as mark_tool
-from toolbox.tools.middleware import ToolCall, ToolHandler, ToolMiddleware
+from toolbx import CallLoggingMiddleware, ErrorBoundaryMiddleware, Toolbox, Toolset
+from toolbx import tool as mark_tool
+from toolbx.tools.middleware import ToolCall, ToolHandler, ToolMiddleware
 
 
 class TimingMiddleware(ToolMiddleware):

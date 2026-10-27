@@ -1,1 +1,1 @@
-"""Small, runnable examples built with toolbox."""
+"""Small, runnable examples built with toolbx."""

@@ -1,6 +1,6 @@
 import pytest
 
-from toolbox import Toolbox, Toolset, tool
+from toolbx import Toolbox, Toolset, tool
 
 
 @pytest.mark.asyncio

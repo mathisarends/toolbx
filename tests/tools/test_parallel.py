@@ -4,7 +4,7 @@ import threading
 
 import pytest
 
-from toolbox import Toolbox, ToolRequest, Toolset, tool
+from toolbx import Toolbox, ToolRequest, Toolset, tool
 
 
 class Calls(Toolset, namespace=None):

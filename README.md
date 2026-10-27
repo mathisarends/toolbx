@@ -1,4 +1,4 @@
-# toolbox
+# toolbx
 
 Provider-neutral tool definitions and execution for Python agents. Define tools
 as instance methods on a `Toolset`, pass dependencies through its constructor,
@@ -10,15 +10,15 @@ Requires Python 3.13 or newer.
 ## Installation
 
 ```console
-uv add mm-agenttoolkit
+uv add toolbx
 ```
 
-The distribution name is `mm-agenttoolkit`; the Python import is `toolbox`.
+The distribution name and Python import are both `toolbx`.
 
 ## Quickstart
 
 ```python
-from toolbox import Toolbox, Toolset, tool
+from toolbx import Toolbox, Toolset, tool
 
 
 class CalculatorTools(Toolset, namespace=None):
@@ -139,7 +139,7 @@ own middleware. Cancellation propagates.
 ## Parallel calls
 
 ```python
-from toolbox import ToolRequest
+from toolbx import ToolRequest
 
 results = await toolbox.execute_many([
     ToolRequest("catalog_search", '{"query": "first"}', call_id="call-1"),
@@ -158,7 +158,7 @@ a sync call but cannot stop its already running thread.
 ## Middleware and metadata
 
 ```python
-from toolbox import CallLoggingMiddleware, ToolCall, ToolHandler
+from toolbx import CallLoggingMiddleware, ToolCall, ToolHandler
 
 
 async def trace(call: ToolCall, call_next: ToolHandler) -> object:
@@ -188,7 +188,8 @@ truncation markers, while retaining both ends where the budget permits.
 
 This API deliberately breaks earlier versions:
 
-- Import from `toolbox` instead of `agenttoolkit`.
+- Install `toolbx` instead of `mm-agenttoolkit` and import from `toolbx`
+  instead of `toolbox` or `agenttoolkit`.
 - Define tools on `Toolset` subclasses; replace `@toolbox.tool`, `register` and
   `add_plugin` with `@tool` methods and `Toolbox(...)/add(...)`.
 - Pass dependencies through toolset constructors. `Inject`, `ToolContext`,

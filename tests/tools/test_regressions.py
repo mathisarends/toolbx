@@ -3,7 +3,7 @@ import logging
 import pytest
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from toolbox import ErrorBoundaryMiddleware, Toolbox, Toolset, tool
+from toolbx import ErrorBoundaryMiddleware, Toolbox, Toolset, tool
 
 
 def test_exported_schemas_can_be_transformed_without_changing_the_tool() -> None:
@@ -186,7 +186,7 @@ async def test_model_parameters_stay_nested_unless_params_is_explicit() -> None:
 
 @pytest.mark.asyncio
 async def test_call_logging_keeps_arguments_out_of_info_logs(caplog) -> None:
-    from toolbox import CallLoggingMiddleware
+    from toolbx import CallLoggingMiddleware
 
     class Sensitive(Toolset, namespace=None):
         @tool("Accept a token")
@@ -194,13 +194,13 @@ async def test_call_logging_keeps_arguments_out_of_info_logs(caplog) -> None:
             pass
 
     toolbox = Toolbox(Sensitive(), middleware=[CallLoggingMiddleware()])
-    with caplog.at_level(logging.INFO, logger="toolbox.tools.middleware"):
+    with caplog.at_level(logging.INFO, logger="toolbx.tools.middleware"):
         await toolbox.execute("accept", {"token": "sensitive-value"})
     assert "accept called" in caplog.text
     assert "sensitive-value" not in caplog.text
 
     caplog.clear()
-    with caplog.at_level(logging.DEBUG, logger="toolbox.tools.middleware"):
+    with caplog.at_level(logging.DEBUG, logger="toolbx.tools.middleware"):
         await toolbox.execute("accept", {"token": "sensitive-value"})
     assert "sensitive-value" in caplog.text
 

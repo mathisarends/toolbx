@@ -8,8 +8,8 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from toolbox.tools.schema import ToolSchema, _params_parameter, _schema_model
-from toolbox.tools.toolset import require_valid_name
+from toolbx.tools.schema import ToolSchema, _params_parameter, _schema_model
+from toolbx.tools.toolset import require_valid_name
 
 
 @dataclass(frozen=True, slots=True)

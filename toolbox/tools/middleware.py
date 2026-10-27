@@ -2,7 +2,7 @@ import logging
 import time
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol
 
 from toolbox.tools.models import Tool
 
@@ -29,23 +29,23 @@ class ToolCall:
 type ToolHandler = Callable[[ToolCall], Awaitable[object]]
 
 
-class ToolMiddleware:
+class ToolMiddleware(Protocol):
     async def __call__(
         self,
         call: ToolCall,
-        next: ToolHandler,
-    ) -> object:
-        raise NotImplementedError
+        call_next: ToolHandler,
+        /,
+    ) -> object: ...
 
 
 class ErrorBoundaryMiddleware(ToolMiddleware):
     async def __call__(
         self,
         call: ToolCall,
-        next: ToolHandler,
+        call_next: ToolHandler,
     ) -> object:
         try:
-            return await next(call)
+            return await call_next(call)
         except Exception as error:
             logger.exception("Tool '%s' failed", call.name)
             message = str(error) or type(error).__name__
@@ -56,13 +56,13 @@ class CallLoggingMiddleware(ToolMiddleware):
     async def __call__(
         self,
         call: ToolCall,
-        next: ToolHandler,
+        call_next: ToolHandler,
     ) -> object:
         logger.info("[tool] %s called", call.name)
         logger.debug("[tool] %s arguments: %r", call.name, call.raw_args)
         started = time.perf_counter()
         try:
-            return await next(call)
+            return await call_next(call)
         finally:
             elapsed_ms = (time.perf_counter() - started) * 1000
             logger.info("[tool] %s finished (%.0f ms)", call.name, elapsed_ms)

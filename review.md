@@ -38,16 +38,6 @@ Sollen Beschreibungen dynamisch aus dem Zustand einer Toolset-Instanz
 entstehen k?nnen? Falls ja, sollte der Callback wie bei `available_when`
 die Toolset-Instanz erhalten.
 
-### E9 – Middleware
-
-- `ToolMiddleware` ist eine Basisklasse, deren `__call__`
-  `NotImplementedError` wirft. Ein `Protocol` (oder einfach ein Callable-Typ)
-  würde auch schlichte `async def`-Middlewares erlauben.
-- Der Parameter `next` überdeckt das gleichnamige Builtin. `call_next` ist
-  üblich (Starlette, FastAPI).
-- Um Argumente zu ändern, braucht man `dataclasses.replace(call, raw_args=…)`.
-  Das sollte dokumentiert oder als `call.with_args(...)` angeboten werden.
-
 ### E10 – Registry-Grundfunktionen fehlen
 
 `get()` liefert `None`, deshalb gibt es überall `if tool is not None`. Es

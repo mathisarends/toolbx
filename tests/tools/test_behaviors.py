@@ -36,10 +36,10 @@ class RecordingMiddleware(ToolMiddleware):
         self.events = events
 
     async def __call__(
-        self, call: ToolCall, next: Callable[[ToolCall], Awaitable[object]]
+        self, call: ToolCall, call_next: Callable[[ToolCall], Awaitable[object]]
     ) -> object:
         self.events.append(f"before:{call.raw_args.get('value')}")
-        result = await next(call)
+        result = await call_next(call)
         self.events.append(f"after:{result}")
         return result
 

@@ -11,18 +11,6 @@ gel?scht; verbleibende IDs bleiben stabil.
 
 ## 1. Dinge, die in der Praxis schieflaufen können
 
-### R1 – Implizites Flatten eines einzelnen Model-Parameters
-
-`_infer_param_model` (`schema.py:51-74`) macht aus `def create_user(user: User)`
-ein Schema mit den Feldern **von `User` auf oberster Ebene** (`{"name": …}`)
-statt `{"user": {…}}`. Das ist überraschend. Noch schlimmer: Kommt später ein
-zweiter Parameter hinzu, ändert sich die Schema-Form unbemerkt, und damit das
-Prompt-Verhalten und gespeicherte Transkripte.
-
-**Vorschlag:** Nur flatten, wenn es explizit gewünscht ist (`params=Model`),
-oder mit einem klaren Marker wie `params: Params[SearchParams]`. Sonst
-verhalten sich Model-Parameter wie alle anderen Parameter.
-
 ### R5 – `CallLoggingMiddleware` loggt rohe Argumente auf INFO
 
 `middleware.py:54` loggt `call.raw_args` vollständig. Tool-Argumente

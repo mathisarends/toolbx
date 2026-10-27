@@ -153,3 +153,30 @@ def test_unannotated_signature_parameter_is_rejected_with_its_name() -> None:
             @tool("Invalid")
             def invalid(self, value) -> None:
                 pass
+
+
+@pytest.mark.asyncio
+async def test_model_parameters_stay_nested_unless_params_is_explicit() -> None:
+    class User(BaseModel):
+        name: str
+
+    class Users(Toolset, namespace=None):
+        @tool("Create")
+        def create(self, user: User) -> str:
+            return user.name
+
+        @tool("Create with options")
+        def create_with_options(self, user: User, active: bool = True) -> str:
+            return user.name
+
+        @tool("Create with explicit flat input", params=User)
+        def create_flat(self, user: User) -> str:
+            return user.name
+
+    toolbox = Toolbox(Users())
+    nested, extended, flat = toolbox.schemas()
+    assert set(nested.parameters["properties"]) == {"user"}
+    assert set(extended.parameters["properties"]) == {"user", "active"}
+    assert set(flat.parameters["properties"]) == {"name"}
+    assert await toolbox.execute("create", {"user": {"name": "Ada"}}) == "Ada"
+    assert await toolbox.execute("create_flat", {"name": "Ada"}) == "Ada"

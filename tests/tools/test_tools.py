@@ -44,7 +44,7 @@ def test_schema_is_provider_neutral_with_adapters() -> None:
     toolbox = Toolbox()
 
     class DefinedTools2(Toolset, namespace=None):
-        @mark_tool("Search")
+        @mark_tool("Search", params=SearchParams)
         def search(self, params: SearchParams) -> None:
             pass
 

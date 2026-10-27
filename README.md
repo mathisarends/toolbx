@@ -74,6 +74,10 @@ the model fields form the top-level input object and the method receives the
 validated model, including nested model instances. Pydantic performs input
 validation; signature parameters require type annotations.
 
+A model used in a normal signature stays nested: `create(user: User)` accepts
+`{"user": {"name": "Ada"}}`. Adding another method parameter does not change
+that shape. Only an explicit `params=User` uses `{"name": "Ada"}` at the top level.
+
 ## Namespaces and composition
 
 A toolset's default namespace is its class name in snake case, without a

@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from toolbox.tools.schema import ToolSchema, _infer_param_model, _schema_model
+from toolbox.tools.schema import ToolSchema, _schema_model
 from toolbox.tools.toolset import require_valid_name
 
 
@@ -44,7 +44,7 @@ class Tool:
         self.name = name
         self.description = "" if description is None else description
         self.fn = fn
-        self.param_model = param_model or _infer_param_model(fn)
+        self.param_model = param_model
         self._metadata = metadata or ToolMetadata()
         self.requires_approval = requires_approval
         self.available_when = available_when

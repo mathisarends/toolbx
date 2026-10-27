@@ -14,7 +14,7 @@ class SearchParams(BaseModel):
 
 
 class DefinedTools1(Toolset, namespace=None):
-    @mark_tool("Search the documentation")
+    @mark_tool("Search the documentation", params=SearchParams)
     def search(self, params: SearchParams) -> None:
         pass
 

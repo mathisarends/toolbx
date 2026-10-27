@@ -40,7 +40,7 @@ class CatalogTools(Toolset):
     def __init__(self, catalog: CatalogService) -> None:
         self._catalog = catalog
 
-    @tool("Search the product catalog")
+    @tool("Search the product catalog", params=SearchParams)
     async def search(
         self,
         params: SearchParams,

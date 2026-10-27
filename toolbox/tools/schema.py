@@ -46,29 +46,6 @@ def _schema_model(
     return _model_from_callable(func)
 
 
-def _infer_param_model(func: Callable) -> type[BaseModel] | None:
-    signature = inspect.signature(func)
-    hints = get_type_hints(func, include_extras=True)
-    candidates: list[Any] = []
-    for name, parameter in signature.parameters.items():
-        if parameter.kind in {
-            inspect.Parameter.VAR_POSITIONAL,
-            inspect.Parameter.VAR_KEYWORD,
-        }:
-            return None
-        annotation = hints.get(name)
-        candidates.append(annotation)
-
-    if len(candidates) != 1:
-        return None
-    candidate = candidates[0]
-    if get_origin(candidate) is Annotated:
-        candidate = get_args(candidate)[0]
-    if isinstance(candidate, type) and issubclass(candidate, BaseModel):
-        return candidate
-    return None
-
-
 def _model_from_callable(func: Callable) -> type[BaseModel]:
     signature = inspect.signature(func)
     hints = get_type_hints(func, include_extras=True)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from types import EllipsisType
 from typing import Annotated, Any, get_args, get_origin, get_type_hints
 
@@ -14,6 +14,7 @@ from agenttoolkit.tools.middleware import ToolCall, ToolMiddleware, compose
 from agenttoolkit.tools.models import StatusFormatter, Tool, ToolMetadata
 from agenttoolkit.tools.toolset import (
     AgentToolset,
+    ToolEntry,
     collect_tool_entries,
     require_valid_name,
 )
@@ -24,7 +25,7 @@ class ToolRegistry:
 
     def __init__(
         self,
-        *,
+        *toolsets: object,
         container: DependencyContainer | None = None,
         dependencies: Sequence[DependencyProvider] | None = None,
         context: ToolContext | None = None,
@@ -40,6 +41,8 @@ class ToolRegistry:
         )
         self._context = context
         self._handler = compose(middleware or (), self._invoke)
+        for toolset in toolsets:
+            self.add(toolset)
 
     def set_context(self, context: ToolContext | None) -> None:
         """Set the default context used for schemas and tool execution."""
@@ -100,12 +103,16 @@ class ToolRegistry:
         toolset: object,
         *,
         namespace: str | EllipsisType | None = ...,
+        include: Collection[str] | None = None,
+        exclude: Collection[str] | None = None,
     ) -> tuple[Tool, ...]:
         """Atomically register the ``@tool`` methods of a toolset instance.
 
         The namespace defaults to the one declared by an ``AgentToolset``
         subclass; pass it to register several instances of one class or to
         register objects which are not ``AgentToolset`` subclasses.
+        ``include`` and ``exclude`` select tools by their local, unprefixed
+        name.
         """
         if isinstance(toolset, type):
             raise TypeError("add expects an instance, not a class")
@@ -128,6 +135,7 @@ class ToolRegistry:
         entries = collect_tool_entries(toolset_type)
         if not entries:
             raise ValueError(f"{toolset_type.__name__} does not define any tools")
+        entries = _select_entries(toolset_type, entries, include, exclude)
 
         pending: list[Tool] = []
         collisions: list[str] = []
@@ -213,6 +221,34 @@ class ToolRegistry:
         params = tool.input_model.model_validate(call.raw_args)
         arguments = await resolve_arguments(tool, params, call.container, call.context)
         return await tool.execute(arguments)
+
+
+def _select_entries(
+    toolset_type: type,
+    entries: tuple[ToolEntry, ...],
+    include: Collection[str] | None,
+    exclude: Collection[str] | None,
+) -> tuple[ToolEntry, ...]:
+    if isinstance(include, str) or isinstance(exclude, str):
+        raise TypeError("include and exclude must be collections of tool names")
+    if include is None and exclude is None:
+        return entries
+
+    local_names = {entry.local_name for entry in entries}
+    unknown = sorted((set(include or ()) | set(exclude or ())) - local_names)
+    if unknown:
+        raise ValueError(
+            f"{toolset_type.__name__} has no tools named {', '.join(unknown)}"
+        )
+    selected = tuple(
+        entry
+        for entry in entries
+        if (include is None or entry.local_name in include)
+        and (exclude is None or entry.local_name not in exclude)
+    )
+    if not selected:
+        raise ValueError(f"{toolset_type.__name__} selects no tools")
+    return selected
 
 
 def _describe_source(tool: Tool) -> str:

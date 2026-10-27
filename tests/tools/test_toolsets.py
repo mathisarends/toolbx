@@ -200,3 +200,69 @@ def test_collision_between_toolsets_names_the_existing_toolset() -> None:
 
     with pytest.raises(ValueError, match=r"'ping' is already registered.*First"):
         tools.add(Second())
+
+
+def test_constructor_registers_toolsets_in_order() -> None:
+    class Files(AgentToolset):
+        @tool("Read")
+        def read(self) -> None:
+            pass
+
+    tools = Tools(CatalogTools(CatalogService("docs")), Files())
+
+    assert [item.name for item in tools] == [
+        "catalog_search",
+        "catalog_get",
+        "files_read",
+    ]
+
+
+def test_constructor_rejects_colliding_toolsets() -> None:
+    with pytest.raises(ValueError, match="pass namespace="):
+        Tools(CatalogTools(CatalogService("a")), CatalogTools(CatalogService("b")))
+
+
+def test_include_selects_tools_by_local_name() -> None:
+    tools = Tools()
+
+    tools.add(CatalogTools(CatalogService("docs")), include={"get"})
+
+    assert [item.name for item in tools] == ["catalog_get"]
+
+
+def test_exclude_removes_tools_by_local_name() -> None:
+    tools = Tools()
+
+    tools.add(CatalogTools(CatalogService("docs")), exclude=["get"])
+
+    assert [item.name for item in tools] == ["catalog_search"]
+
+
+def test_include_and_exclude_combine() -> None:
+    tools = Tools()
+
+    tools.add(
+        CatalogTools(CatalogService("docs")),
+        include={"search", "get"},
+        exclude={"search"},
+    )
+
+    assert [item.name for item in tools] == ["catalog_get"]
+
+
+def test_filters_reject_unknown_tool_names() -> None:
+    tools = Tools()
+
+    with pytest.raises(ValueError, match="no tools named delete, purge"):
+        tools.add(CatalogTools(CatalogService("docs")), exclude={"purge", "delete"})
+    assert len(tools) == 0
+
+
+def test_filters_reject_selecting_nothing() -> None:
+    with pytest.raises(ValueError, match="selects no tools"):
+        Tools().add(CatalogTools(CatalogService("docs")), exclude={"search", "get"})
+
+
+def test_filters_reject_a_bare_string() -> None:
+    with pytest.raises(TypeError, match="collections of tool names"):
+        Tools().add(CatalogTools(CatalogService("docs")), include="search")

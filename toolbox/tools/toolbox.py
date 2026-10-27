@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import json
 from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from types import EllipsisType
 from typing import Annotated, Any, get_args, get_origin, get_type_hints
@@ -10,7 +12,7 @@ from toolbox.dependency import DependencyContainer, DependencyProvider
 from toolbox.tools.arguments import resolve_arguments
 from toolbox.tools.binding import ToolAvailability, ToolDescription
 from toolbox.tools.context import _INJECT_MARKER, ToolContext
-from toolbox.tools.middleware import ToolCall, ToolMiddleware, compose
+from toolbox.tools.middleware import ToolCall, ToolMiddleware, ToolRequest, compose
 from toolbox.tools.models import Tool, ToolMetadata
 from toolbox.tools.schema import ToolSchema
 from toolbox.tools.toolset import (
@@ -201,18 +203,40 @@ class Toolbox:
     async def execute(
         self,
         name: str,
-        arguments: Mapping[str, Any] | None = None,
+        arguments: Mapping[str, Any] | str | None = None,
         *,
+        call_id: str | None = None,
         context: ToolContext | None = None,
     ) -> object:
         call = ToolCall(
             name=name,
-            raw_args=dict(arguments or {}),
+            raw_args=_parse_arguments(arguments),
             context=self._context if context is None else context,
             tool=self._tools.get(name),
             container=self._container,
+            call_id=call_id,
         )
         return await self._handler(call)
+
+    async def execute_many(
+        self,
+        calls: Sequence[ToolRequest],
+        *,
+        return_exceptions: bool = True,
+    ) -> list[object]:
+        """Execute calls concurrently, preserving input order and optional errors.
+
+        By default, each failed call contributes its exception to the result
+        list. Pass ``return_exceptions=False`` to propagate the first failure.
+        Cancelling the batch cancels its outstanding calls.
+        """
+        return await asyncio.gather(
+            *(
+                self.execute(call.name, call.arguments, call_id=call.call_id)
+                for call in calls
+            ),
+            return_exceptions=return_exceptions,
+        )
 
     def merge(self, other: Toolbox, *, replace: bool = False) -> None:
         pending = {tool.name: tool for tool in other}
@@ -244,6 +268,16 @@ class Toolbox:
         params = tool.input_model.model_validate(call.raw_args)
         arguments = await resolve_arguments(tool, params, call.container, call.context)
         return await tool._invoke(arguments)
+
+
+def _parse_arguments(arguments: Mapping[str, Any] | str | None) -> dict[str, Any]:
+    if arguments is None:
+        return {}
+    if isinstance(arguments, str):
+        arguments = json.loads(arguments) if arguments.strip() else {}
+    if not isinstance(arguments, Mapping):
+        raise TypeError("Tool arguments must be a JSON object or a mapping")
+    return dict(arguments)
 
 
 def _select_entries(

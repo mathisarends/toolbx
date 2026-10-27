@@ -13,6 +13,7 @@ from .middleware import (
     ErrorBoundaryMiddleware,
     ToolCall,
     ToolMiddleware,
+    ToolRequest,
 )
 from .models import Tool, ToolMetadata
 from .plugins import tool
@@ -32,6 +33,7 @@ __all__ = [
     "ToolDescription",
     "ToolMetadata",
     "ToolMiddleware",
+    "ToolRequest",
     "ToolSchema",
     "Toolbox",
     "Toolset",

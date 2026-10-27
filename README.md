@@ -248,6 +248,24 @@ return types, the static return type of `Toolbox.execute()` is `object`. The
 application's provider adapter owns serialization and can add any
 provider-specific metadata at that boundary.
 
+## Parallel tool calls
+
+`execute` accepts a mapping or a JSON object string and an optional `call_id`
+for middleware and tracing. Invalid JSON and tool errors propagate as exceptions.
+
+```python
+from toolbox import ToolRequest
+
+results = await toolbox.execute_many([
+    ToolRequest("search", '{"query": "first"}', call_id="call-1"),
+    ToolRequest("search", {"query": "second"}, call_id="call-2"),
+])
+```
+
+Calls run concurrently. Results keep input order; failed calls contribute their
+exception to the list. Use `return_exceptions=False` to propagate the first
+failure. Cancelling the batch cancels its outstanding calls.
+
 ## Dependency injection
 
 A tool that needs a client, a session, or a connection declares it as an

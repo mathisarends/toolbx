@@ -1,6 +1,6 @@
 import logging
 import time
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -12,12 +12,22 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
+class ToolRequest:
+    """Provider-neutral request for a tool call, including an optional trace ID."""
+
+    name: str
+    arguments: Mapping[str, Any] | str | None = None
+    call_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class ToolCall:
     name: str
     raw_args: dict[str, Any]
     context: ToolContext | None = None
     tool: Tool | None = None
     container: DependencyContainer | None = None
+    call_id: str | None = None
 
 
 type ToolHandler = Callable[[ToolCall], Awaitable[object]]

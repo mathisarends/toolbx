@@ -27,8 +27,6 @@ nachgestellt. Die Ausgabe steht jeweils dabei.
 - Dynamische Verfügbarkeit bleibt erhalten: Tools sollen sich ein- und
   ausschalten lassen. Die konkrete API sowie die weitere Unterstützung
   dynamischer Beschreibungen sind noch offen (E8).
-- `execute` soll Mappings und JSON-Strings sowie eine optionale Call-ID
-  annehmen. Parallele Tool-Calls werden über `execute_many` unterstützt (E4).
 
 Die Zielrichtung ist beschlossen, die Umsetzung steht noch aus. Erledigte
 oder entfallene Punkte werden gelöscht; verbleibende IDs bleiben stabil.
@@ -93,15 +91,6 @@ nur kürzen, wenn mindestens zwei Zeilen wegfallen.
 ---
 
 ## 3. Ergonomie und API-Design
-
-### E4 – `execute` passt nicht zu dem, was Provider liefern
-
-- OpenAI liefert die Argumente als JSON-String. `execute` nimmt aber nur ein
-  Mapping, jeder Loop macht also `json.loads(... or "{}")` selbst.
-- Die Tool-Call-ID des Providers taucht nicht in `ToolCall` auf. Middleware
-  für Tracing, Approval oder Caching kann Aufrufe deshalb nicht zuordnen.
-- Es gibt keinen Helfer für parallele Tool-Calls (`execute_many` mit
-  `gather` und einer Fehlerbehandlung pro Call).
 
 ### E5 – Die Ergebnis-Serialisierung baut jede App selbst
 

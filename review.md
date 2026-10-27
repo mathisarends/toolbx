@@ -39,21 +39,6 @@ oder entfallene Punkte werden gelöscht; verbleibende IDs bleiben stabil.
 
 ## 1. Bugs
 
-### B5 – Exportierte Schemas sind Referenzen auf den internen Tool-Zustand · mittel · bestätigt
-
-`Tool.to_schema` übergibt `self.parameters` direkt (`models.py:93-97`).
-Pydantic kopiert dabei nur flach, und `to_anthropic_schema` gibt das Dict
-unverändert zurück (`schema.py:21-26`). Wer das Schema nachbearbeitet
-(OpenAI-strict-Transform, `cache_control`, Beschreibungen kürzen), verändert
-dabei dauerhaft das Tool:
-
-```
-tool.parameters["properties"]["q"] == {..., "INJECTED": True, "NATIVE": True}
-```
-
-**Fix:** In `to_schema` mit `deepcopy` arbeiten, oder das Schema intern
-eingefroren halten.
-
 ### B6 – `merge()` ist nicht atomar · mittel · bestätigt
 
 `merge` registriert die Tools einzeln (`registry.py:201-203`). Bei einer
@@ -352,7 +337,7 @@ auf die explizite Übergabe von Dependencies im Toolset-Konstruktor umstellen.
 Die neue API für Availability und Description vorher klären (E8).
 
 **Kleine, unabhängige Korrekturen:**
-B5 · B6 · B8 · B14 · `name` nur als Keyword (E11)
+B6 · B8 · B14 · `name` nur als Keyword (E11)
 
 **Weitere Vereinfachungen und Validierung:**
 B7 · B9 · B10/E3 · B16/B17/R8

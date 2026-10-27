@@ -85,7 +85,7 @@ class Tool:
         return ToolSchema(
             name=self.name,
             description=self.resolve_description(context),
-            parameters=self.parameters,
+            parameters=deepcopy(self.parameters),
         )
 
     def to_openai_schema(

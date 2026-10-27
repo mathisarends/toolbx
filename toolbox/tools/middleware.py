@@ -42,7 +42,8 @@ class ErrorBoundaryMiddleware(ToolMiddleware):
             return await next(call)
         except Exception as error:
             logger.exception("Tool '%s' failed", call.name)
-            return f"Tool failed: {error}"
+            message = str(error) or type(error).__name__
+            return f"Tool failed: {message}"
 
 
 class CallLoggingMiddleware(ToolMiddleware):

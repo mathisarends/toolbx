@@ -50,14 +50,6 @@ weil Groß- und Kleinschreibung zählt.
 **Fix:** Overloads mit `Literal[ToolSchemaFormat.OPENAI, "openai"]` usw.
 schreiben, oder besser getrennte Methoden anbieten (siehe E3).
 
-### B14 – Leere Fehlermeldungen bei Exceptions ohne Text · niedrig · bestätigt
-
-Die optional eingebundene `ErrorBoundaryMiddleware` baut die Meldung aus
-`f"Tool failed: {error}"`. Bei
-`TimeoutError()`, `KeyError` u. a. sieht das LLM dann nur `'Tool failed: '`
-bzw. `Tool failed: 'x'`. Besser ist ein Fallback auf den Typnamen:
-`str(error) or type(error).__name__`.
-
 ### B16 – Schemafehler in Toolset-Methoden fallen erst bei `add()` auf · niedrig · bestätigt
 
 Laut README fallen Fehler schon bei der Klassendefinition auf.
@@ -286,7 +278,7 @@ auf die explizite Übergabe von Dependencies im Toolset-Konstruktor umstellen.
 Die neue API für Availability und Description vorher klären (E8).
 
 **Kleine, unabhängige Korrekturen:**
-B14 · `name` nur als Keyword (E11)
+`name` nur als Keyword (E11)
 
 **Weitere Vereinfachungen und Validierung:**
 B10/E3 · B16/B17/R8

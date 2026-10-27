@@ -1,7 +1,7 @@
 import pytest
 from pydantic import BaseModel
 
-from toolbox import Toolbox, ToolSchemaFormat, Toolset, tool
+from toolbox import ErrorBoundaryMiddleware, Toolbox, ToolSchemaFormat, Toolset, tool
 
 
 def test_exported_schemas_can_be_transformed_without_changing_the_tool() -> None:
@@ -115,3 +115,17 @@ async def test_params_model_and_nested_models_reach_the_method_as_models() -> No
             return params.item.value
 
     assert await Toolbox(Models()).execute("read", {"item": {"value": "7"}}) == 7
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("exception", [TimeoutError, RuntimeError])
+async def test_optional_error_boundary_names_exceptions_without_text(
+    exception: type[Exception],
+) -> None:
+    class Failure(Toolset, namespace=None):
+        @tool("Fail")
+        def fail(self) -> None:
+            raise exception()
+
+    toolbox = Toolbox(Failure(), middleware=[ErrorBoundaryMiddleware()])
+    assert await toolbox.execute("fail") == f"Tool failed: {exception.__name__}"

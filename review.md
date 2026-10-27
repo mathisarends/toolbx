@@ -1,22 +1,16 @@
-# Review: toolbox 0.4.0 (Arbeitsstand inkl. uncommitteter Änderungen)
+# Offene Review-Punkte: toolbox 0.4.0
 
-Stand: 2026-10-27. Geprüft: `toolbox/`, `tests/`, `examples/`, `experiments/`,
-README/CONTRIBUTING. Tests: 90 grün, ruff sauber, Coverage 96 %.
-
-Alle als **bestätigt** markierten Punkte habe ich mit einem kleinen Skript
-nachgestellt. Die Ausgabe steht jeweils dabei.
+Stand: 2026-10-27. Hier stehen nur noch offene API- und Dokumentationsfragen.
 
 Breaking Changes sind erlaubt. Erledigte oder entfallene Punkte werden
-gel?scht; verbleibende IDs bleiben stabil.
+gelöscht; verbleibende IDs bleiben stabil.
 
-## 2. Ergonomie und API-Design
+## 1. Ergonomie und API-Design
 
 ### E5 – Die Ergebnis-Serialisierung baut jede App selbst
 
-Laut README gehört das zum Adapter der App. In der Praxis schreibt aber jede
-App das gleiche `_json_default`. `experiments/agent.py` macht es sogar falsch:
-`json.dumps("text")` packt String-Ergebnisse noch einmal in Anführungszeichen,
-das Modell sieht `"\"Tool failed: …\""`. Ein kleiner Helfer würde das lösen:
+Soll die Bibliothek einen optionalen Serialisierungshelfer anbieten?
+Die Serialisierung gehört derzeit zum Adapter der App. Möglich wäre
 `to_text(result)` (str bleibt unverändert, BaseModel → JSON, sonst
 `json.dumps(default=…)`).
 
@@ -32,10 +26,10 @@ ApprovalMiddleware(confirm=async_confirm)       # gibt standardisierten Decline 
 
 Dann muss nicht jede App den Check vor `execute` nachbauen.
 
-### E8 ? Dynamische Beschreibungen ? offen
+### E8 – Dynamische Beschreibungen · offen
 
 Sollen Beschreibungen dynamisch aus dem Zustand einer Toolset-Instanz
-entstehen k?nnen? Falls ja, sollte der Callback wie bei `available_when`
+entstehen können? Falls ja, sollte der Callback wie bei `available_when`
 die Toolset-Instanz erhalten.
 
 ### E10 – Registry-Grundfunktionen fehlen
@@ -66,7 +60,7 @@ Felder `required`, optionale Felder als nullable).
 
 ---
 
-## 3. Sprache und Benennung
+## 2. Sprache und Benennung
 
 | Konzept | Aktuelle Namen | Vorschlag |
 |---|---|---|
@@ -87,11 +81,8 @@ Weitere Kleinigkeiten:
 
 ---
 
-## 4. Doku und Repo
+## 3. Doku und Repo
 
-- 0.4.0 entfernt viele öffentliche APIs, aber es gibt weder CHANGELOG noch
-  Migrationshinweise. Bei einer 0.x-Version ist das erlaubt, für Nutzer ist es
-  trotzdem ein harter Bruch.
 - `Agents.md` und `Claude.md` enthalten fast dieselben Konventionen. Eine
   Quelle reicht, die andere kann darauf verweisen.
 - `pyproject.toml`: Classifiers (inkl. `Typing :: Typed`) und

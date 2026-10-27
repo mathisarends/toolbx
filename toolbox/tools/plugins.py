@@ -7,9 +7,9 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from agenttoolkit.tools.binding import ToolAvailability, ToolDescription
+from toolbox.tools.binding import ToolAvailability, ToolDescription
 
-_TOOL_DEFINITION_ATTRIBUTE = "__agenttoolkit_tool_definition__"
+_TOOL_DEFINITION_ATTRIBUTE = "__toolbox_tool_definition__"
 
 
 @dataclass(frozen=True, slots=True)

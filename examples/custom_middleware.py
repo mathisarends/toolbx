@@ -1,8 +1,8 @@
 import asyncio
 import time
 
-from agenttoolkit import CallLoggingMiddleware, ErrorBoundaryMiddleware, Toolbox
-from agenttoolkit.tools.middleware import ToolCall, ToolHandler, ToolMiddleware
+from toolbox import CallLoggingMiddleware, ErrorBoundaryMiddleware, Toolbox
+from toolbox.tools.middleware import ToolCall, ToolHandler, ToolMiddleware
 
 
 class TimingMiddleware(ToolMiddleware):

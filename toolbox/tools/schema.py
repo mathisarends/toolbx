@@ -4,7 +4,7 @@ from typing import Annotated, Any, get_args, get_origin, get_type_hints
 
 from pydantic import BaseModel, ConfigDict, create_model
 
-from agenttoolkit.tools.context import _INJECT_MARKER
+from toolbox.tools.context import _INJECT_MARKER
 
 
 class ToolSchema(BaseModel):

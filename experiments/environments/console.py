@@ -4,8 +4,8 @@ from typing import Any
 
 from llmify import RetryableError, RetryEvent
 
-from agenttoolkit.tools import ToolContext, ToolRegistry
 from experiments.agent import Agent
+from toolbox.tools import ToolContext, ToolRegistry
 
 # Second line of defence behind llmify's own retries: those cover a burst of a
 # few seconds, these cover an outage that lasts minutes.

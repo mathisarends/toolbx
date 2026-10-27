@@ -4,7 +4,7 @@ from typing import Annotated
 import pytest
 from pydantic import BaseModel, Field
 
-from agenttoolkit import (
+from toolbox import (
     CallLoggingMiddleware,
     ErrorBoundaryMiddleware,
     Inject,
@@ -149,7 +149,7 @@ async def test_tool_errors_are_logged_and_returned_by_the_boundary(
     def internal_failure() -> None:
         raise RuntimeError("secret")
 
-    with caplog.at_level(logging.ERROR, logger="agenttoolkit.tools.middleware"):
+    with caplog.at_level(logging.ERROR, logger="toolbox.tools.middleware"):
         result = await toolbox.execute("internal_failure")
 
     assert "Tool 'internal_failure' failed" in caplog.text

@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 
-from agenttoolkit import (
+from toolbox import (
     CallLoggingMiddleware,
     ErrorBoundaryMiddleware,
     Inject,

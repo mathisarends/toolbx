@@ -1,9 +1,9 @@
 from typing import Any, overload
 
-from agenttoolkit.tools.context import ToolContext
-from agenttoolkit.tools.models import ToolSchemaFormat
-from agenttoolkit.tools.registry import ToolRegistry
-from agenttoolkit.tools.schema import ToolSchema
+from toolbox.tools.context import ToolContext
+from toolbox.tools.models import ToolSchemaFormat
+from toolbox.tools.registry import ToolRegistry
+from toolbox.tools.schema import ToolSchema
 
 
 class Toolbox(ToolRegistry):

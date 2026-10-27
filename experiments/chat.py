@@ -4,7 +4,10 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
 
-from agenttoolkit.tools import (
+from experiments.agent import Agent
+from experiments.environments import Console
+from experiments.model import experiment_model
+from toolbox.tools import (
     CallLoggingMiddleware,
     ErrorBoundaryMiddleware,
     Inject,
@@ -13,9 +16,6 @@ from agenttoolkit.tools import (
     description_from_context,
     requires,
 )
-from experiments.agent import Agent
-from experiments.environments import Console
-from experiments.model import experiment_model
 
 
 @dataclass

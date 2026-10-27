@@ -1,6 +1,6 @@
-# agenttoolkit
+# toolbox
 
-`agenttoolkit` provides one provider-neutral definition for tools exposed to
+`toolbox` provides one provider-neutral definition for tools exposed to
 LLM agents. Define a tool once — schema, availability, metadata, and
 execution logic — and expose it to OpenAI, Anthropic, or any other provider
 without duplicating definitions.
@@ -42,7 +42,7 @@ Define a tool, give its schema to the model, and execute the call the model
 makes:
 
 ```python
-from agenttoolkit import Toolbox, ToolSchemaFormat
+from toolbox import Toolbox, ToolSchemaFormat
 
 toolbox = Toolbox()
 
@@ -107,7 +107,7 @@ decorator marks methods without registering them; `Toolbox` registers all marked
 methods of an instance together:
 
 ```python
-from agenttoolkit import Toolset, Toolbox, tool
+from toolbox import Toolset, Toolbox, tool
 
 
 class CatalogTools(Toolset):
@@ -177,7 +177,7 @@ def refund(params: RefundParams) -> str: ...
   application needs, readable as `tool.extra`.
 - `requires_approval` — readable as `tool.requires_approval`; check it
   before calling `toolbox.execute(...)` if the call needs user confirmation
-  first. `agenttoolkit` does not enforce approval itself.
+  first. `toolbox` does not enforce approval itself.
 
 ```python
 tool = toolbox.get("refund")
@@ -255,7 +255,7 @@ A tool that needs a client, a session, or a connection declares it as an
 never appear in the model-facing schema:
 
 ```python
-from agenttoolkit import DependencyProvider, Inject, Toolbox, provide
+from toolbox import DependencyProvider, Inject, Toolbox, provide
 
 
 class Dependencies(DependencyProvider):
@@ -312,7 +312,7 @@ dependency is present (and, optionally, satisfies a predicate). Predicates
 compose with `&`, `|`, and `~`:
 
 ```python
-from agenttoolkit import provided, requires
+from toolbox import provided, requires
 
 
 @toolbox.tool(
@@ -328,7 +328,7 @@ depend on context (e.g. embedding a resolved account name), with a fallback
 for when the dependency isn't provided:
 
 ```python
-from agenttoolkit import description_from_context
+from toolbox import description_from_context
 
 description = description_from_context(
     BankingClient,
@@ -352,7 +352,7 @@ List every middleware an agent loop should use explicitly. For example, this
 enables the provided error boundary, call logging, and a timeout:
 
 ```python
-from agenttoolkit import (
+from toolbox import (
     CallLoggingMiddleware,
     ErrorBoundaryMiddleware,
     ToolCall,
@@ -403,7 +403,7 @@ explicit middleware chain:
 ```python
 from pydantic import BaseModel, Field
 
-from agenttoolkit import (
+from toolbox import (
     CallLoggingMiddleware,
     DependencyProvider,
     ErrorBoundaryMiddleware,
@@ -480,7 +480,7 @@ uv run --locked ruff check .
 uv run --locked pytest
 ```
 
-The test command measures branch coverage for `agenttoolkit` and fails
+The test command measures branch coverage for `toolbox` and fails
 below 90%. Dependabot groups Python dependency updates into one weekly pull
 request; the same CI matrix validates every update on Python 3.13 and 3.14.
 

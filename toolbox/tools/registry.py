@@ -6,13 +6,13 @@ from typing import Annotated, Any, get_args, get_origin, get_type_hints
 
 from pydantic import BaseModel
 
-from agenttoolkit.dependency import DependencyContainer, DependencyProvider
-from agenttoolkit.tools.arguments import resolve_arguments
-from agenttoolkit.tools.binding import ToolAvailability, ToolDescription
-from agenttoolkit.tools.context import _INJECT_MARKER, ToolContext
-from agenttoolkit.tools.middleware import ToolCall, ToolMiddleware, compose
-from agenttoolkit.tools.models import Tool, ToolMetadata
-from agenttoolkit.tools.toolset import (
+from toolbox.dependency import DependencyContainer, DependencyProvider
+from toolbox.tools.arguments import resolve_arguments
+from toolbox.tools.binding import ToolAvailability, ToolDescription
+from toolbox.tools.context import _INJECT_MARKER, ToolContext
+from toolbox.tools.middleware import ToolCall, ToolMiddleware, compose
+from toolbox.tools.models import Tool, ToolMetadata
+from toolbox.tools.toolset import (
     ToolEntry,
     Toolset,
     collect_tool_entries,

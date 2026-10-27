@@ -1,6 +1,6 @@
 import pytest
 
-from agenttoolkit import Toolbox, Toolset, tool
+from toolbox import Toolbox, Toolset, tool
 
 
 class CatalogService:

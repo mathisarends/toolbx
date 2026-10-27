@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from agenttoolkit.tools.context import ToolContext
+from toolbox.tools.context import ToolContext
 
 
 class ToolDescription:

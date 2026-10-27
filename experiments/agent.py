@@ -12,7 +12,7 @@ from llmify import (
 )
 from pydantic import BaseModel
 
-from agenttoolkit.tools import Toolbox, ToolSchemaFormat
+from toolbox.tools import Toolbox, ToolSchemaFormat
 
 
 def _json_default(value: Any) -> Any:

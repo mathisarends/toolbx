@@ -1,7 +1,7 @@
 import asyncio
 from dataclasses import dataclass
 
-from agenttoolkit import Toolbox, ToolContext, description_from_context
+from toolbox import Toolbox, ToolContext, description_from_context
 
 
 @dataclass
@@ -28,7 +28,7 @@ def create_issue(title: str) -> str:
 async def main() -> None:
     print(toolbox.get_schema()[0].description)
 
-    context = ToolContext(Project(name="agenttoolkit"))
+    context = ToolContext(Project(name="toolbox"))
     print(toolbox.get_schema(context=context)[0].description)
 
 

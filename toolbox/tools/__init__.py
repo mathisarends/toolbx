@@ -1,4 +1,4 @@
-from agenttoolkit.dependency import DependencyProvider, provide
+from toolbox.dependency import DependencyProvider, provide
 
 from .binding import (
     ToolAvailability,

@@ -1,7 +1,7 @@
 import asyncio
 from dataclasses import dataclass
 
-from agenttoolkit import (
+from toolbox import (
     DependencyProvider,
     Inject,
     Toolbox,
@@ -34,7 +34,7 @@ def search(
 
 async def main() -> None:
     print(toolbox.get_schema()[0].parameters)
-    result = await toolbox.execute("search", {"query": "agenttoolkit"})
+    result = await toolbox.execute("search", {"query": "toolbox"})
     print(result)
 
 

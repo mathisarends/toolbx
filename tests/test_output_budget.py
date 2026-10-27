@@ -1,6 +1,6 @@
 import pytest
 
-from agenttoolkit import OutputBudget
+from toolbox import OutputBudget
 
 
 def test_short_output_passes_through_unchanged() -> None:

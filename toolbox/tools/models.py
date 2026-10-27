@@ -9,9 +9,9 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from agenttoolkit.tools.binding import ToolAvailability, ToolDescription
-from agenttoolkit.tools.context import ToolContext
-from agenttoolkit.tools.schema import ToolSchema, _infer_param_model, _schema_model
+from toolbox.tools.binding import ToolAvailability, ToolDescription
+from toolbox.tools.context import ToolContext
+from toolbox.tools.schema import ToolSchema, _infer_param_model, _schema_model
 
 
 class ToolSchemaFormat(StrEnum):

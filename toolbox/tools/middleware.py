@@ -4,9 +4,9 @@ from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from agenttoolkit.dependency import DependencyContainer
-from agenttoolkit.tools.context import ToolContext
-from agenttoolkit.tools.models import Tool
+from toolbox.dependency import DependencyContainer
+from toolbox.tools.context import ToolContext
+from toolbox.tools.models import Tool
 
 logger = logging.getLogger(__name__)
 

@@ -1,1 +1,1 @@
-"""Small, runnable examples built with agenttoolkit."""
+"""Small, runnable examples built with toolbox."""

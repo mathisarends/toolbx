@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
 
-from agenttoolkit import Toolbox, Toolset, tool
+from toolbox import Toolbox, Toolset, tool
 
 
 @dataclass(frozen=True)

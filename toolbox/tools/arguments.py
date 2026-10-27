@@ -3,9 +3,9 @@ from typing import Annotated, Any, get_args, get_origin, get_type_hints
 
 from pydantic import BaseModel
 
-from agenttoolkit.dependency import DependencyContainer
-from agenttoolkit.tools.context import _INJECT_MARKER, ToolContext
-from agenttoolkit.tools.models import Tool
+from toolbox.dependency import DependencyContainer
+from toolbox.tools.context import _INJECT_MARKER, ToolContext
+from toolbox.tools.models import Tool
 
 
 async def resolve_arguments(

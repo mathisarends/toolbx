@@ -3,8 +3,8 @@ from collections.abc import AsyncIterator, Iterator
 
 import pytest
 
-from agenttoolkit import Inject, Toolbox, provide
-from agenttoolkit.dependency import DependencyContainer, DependencyProvider
+from toolbox import Inject, Toolbox, provide
+from toolbox.dependency import DependencyContainer, DependencyProvider
 
 
 class Settings:

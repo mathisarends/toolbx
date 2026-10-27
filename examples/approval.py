@@ -2,7 +2,7 @@ import asyncio
 
 from pydantic import BaseModel, Field
 
-from agenttoolkit import Toolbox
+from toolbox import Toolbox
 
 toolbox = Toolbox()
 

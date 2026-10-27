@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from types import EllipsisType
 from typing import Any, ClassVar
 
-from agenttoolkit.tools.plugins import ToolDefinition, get_tool_definition
+from toolbox.tools.plugins import ToolDefinition, get_tool_definition
 
 _NAME = re.compile(r"^[A-Za-z0-9_-]+$")
 _WORD_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")

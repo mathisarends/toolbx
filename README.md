@@ -200,7 +200,7 @@ result = await toolbox.execute("search", {"query": "tool middleware"}, context=c
 ```
 
 Code that only registers or executes tools, independent of how they are shown
-to a model, can accept the shared `ToolRegistry` type.
+to a model, can accept the shared `Toolbox` type.
 
 A typical loop confirms approval-gated tools before executing:
 
@@ -386,7 +386,7 @@ agent.
 
 ## Merging registries
 
-Combine tools from multiple `ToolRegistry` instances — e.g. when composing a
+Combine tools from multiple `Toolbox` instances — e.g. when composing a
 registry from several feature modules:
 
 ```python

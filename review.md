@@ -27,7 +27,6 @@ nachgestellt. Die Ausgabe steht jeweils dabei.
 - Dynamische Verfügbarkeit bleibt erhalten: Tools sollen sich ein- und
   ausschalten lassen. Die konkrete API sowie die weitere Unterstützung
   dynamischer Beschreibungen sind noch offen (E8).
-- `ToolRegistry` geht in `Toolbox` auf (E2).
 - `execute` soll Mappings und JSON-Strings sowie eine optionale Call-ID
   annehmen. Parallele Tool-Calls werden über `execute_many` unterstützt (E4).
 
@@ -94,13 +93,6 @@ nur kürzen, wenn mindestens zwei Zeilen wegfallen.
 ---
 
 ## 3. Ergonomie und API-Design
-
-### E2 – `Toolbox` vs. `ToolRegistry`
-
-Seit `StructuredOutputTools` entfernt ist, gibt es keinen zweiten Nutzer der
-Basisklasse mehr. Die Aufteilung ist nur noch Ballast. Der Docstring
-„Shared registration … for tool representations“ ist ein Überbleibsel.
-Vorschlag: zu einer Klasse `Toolbox` zusammenführen.
 
 ### E4 – `execute` passt nicht zu dem, was Provider liefern
 
@@ -238,7 +230,7 @@ Die neue API für Availability und Description vorher klären (E8).
 **Weitere Vereinfachungen und Validierung:**
 R8
 (Signaturprüfung und Argumentzuordnung bei Definition bzw. Registrierung) ·
-E2 (`Toolbox` zusammenführen) · Begriffe vereinheitlichen
+Begriffe vereinheitlichen
 (Abschnitt 4, vor allem plugin → toolset)
 
 **Noch offene API-Entscheidungen:**

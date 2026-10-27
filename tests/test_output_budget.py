@@ -1,6 +1,10 @@
-import pytest
+import json
+from datetime import date
 
-from toolbx import OutputBudget
+import pytest
+from pydantic import BaseModel
+
+from toolbx import OutputBudget, to_text
 
 
 def test_short_output_passes_through_unchanged() -> None:
@@ -69,3 +73,27 @@ def test_total_budget_holds_for_long_lines_large_hints_and_tiny_caps(
     text = "\r\n".join(["x" * 4000] * 1000)
     shaped = OutputBudget(max_chars=limit).truncate(text, hint="details:" + "y" * 1000)
     assert len(shaped) <= limit
+
+
+def test_to_text_passes_strings_through_unchanged() -> None:
+    assert to_text('Tool failed: "x"') == 'Tool failed: "x"'
+
+
+def test_to_text_serializes_models_containers_and_unknown_values() -> None:
+    class User(BaseModel):
+        name: str
+        joined: date
+
+    class Opaque:
+        def __str__(self) -> str:
+            return "opaque"
+
+    assert json.loads(to_text(User(name="Ada", joined=date(2026, 1, 2)))) == {
+        "name": "Ada",
+        "joined": "2026-01-02",
+    }
+    assert json.loads(to_text({"items": [1, "ü"], "value": Opaque()})) == {
+        "items": [1, "ü"],
+        "value": "opaque",
+    }
+    assert to_text(None) == "null"

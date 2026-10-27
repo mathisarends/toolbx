@@ -130,6 +130,8 @@ request-specific state.
 `execute` returns the tool's value unchanged. Validation errors and tool
 exceptions propagate to the caller. There is no result wrapper; the agent loop
 maps exceptions into its provider's error format and serializes values.
+`to_text(result)` covers the common case: strings pass through unchanged, and
+everything else, including Pydantic models, becomes JSON.
 
 `ErrorBoundaryMiddleware` is optional. When explicitly installed, it logs
 exceptions and turns them into `"Tool failed: ..."` strings. Applications that

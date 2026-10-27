@@ -7,13 +7,6 @@ gelöscht; verbleibende IDs bleiben stabil.
 
 ## 1. Ergonomie und API-Design
 
-### E5 – Die Ergebnis-Serialisierung baut jede App selbst
-
-Soll die Bibliothek einen optionalen Serialisierungshelfer anbieten?
-Die Serialisierung gehört derzeit zum Adapter der App. Möglich wäre
-`to_text(result)` (str bleibt unverändert, BaseModel → JSON, sonst
-`json.dumps(default=…)`).
-
 ### E6 – Approval
 
 `requires_approval` ist ein statisches Bool und wird nicht durchgesetzt. Die

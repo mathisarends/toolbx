@@ -1,4 +1,4 @@
-from .output import OutputBudget
+from .output import OutputBudget, to_text
 from .tools import (
     CallLoggingMiddleware,
     ErrorBoundaryMiddleware,
@@ -27,5 +27,6 @@ __all__ = [
     "Toolbox",
     "Toolset",
     "build_schema",
+    "to_text",
     "tool",
 ]

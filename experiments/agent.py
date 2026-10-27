@@ -11,16 +11,8 @@ from llmify import (
     ToolResultMessage,
     UserMessage,
 )
-from pydantic import BaseModel
 
-from toolbx.tools import Toolbox
-
-
-def _json_default(value: Any) -> Any:
-    if isinstance(value, BaseModel):
-        return value.model_dump(mode="json")
-    return str(value)
-
+from toolbx import Toolbox, to_text
 
 OnToolCall = Callable[[str, dict[str, Any]], None]
 OnToolResult = Callable[[str, object], None]
@@ -96,11 +88,7 @@ class Agent:
                 if isinstance(result, Exception):
                     content = f"Tool failed: {str(result) or type(result).__name__}"
                 else:
-                    content = (
-                        result
-                        if isinstance(result, str)
-                        else json.dumps(result, default=_json_default)
-                    )
+                    content = to_text(result)
                 self._messages.append(
                     ToolResultMessage(
                         tool_call_id=call.id,

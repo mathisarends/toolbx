@@ -1,5 +1,19 @@
 from dataclasses import dataclass
 
+from pydantic_core import to_json
+
+
+def to_text(result: object) -> str:
+    """Render a tool result as the text content of a tool-result message.
+
+    Strings pass through unchanged so they are not quoted a second time.
+    Everything else becomes JSON; values JSON cannot represent fall back to
+    ``str()`` instead of failing the turn.
+    """
+    if isinstance(result, str):
+        return result
+    return to_json(result, fallback=str).decode()
+
 
 @dataclass(frozen=True, slots=True)
 class OutputBudget:

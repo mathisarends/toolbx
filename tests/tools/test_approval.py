@@ -6,6 +6,7 @@ from toolbx import (
     ErrorBoundaryMiddleware,
     Toolbox,
     ToolCall,
+    ToolRequest,
     Toolset,
     tool,
 )
@@ -51,26 +52,32 @@ class Recorder:
 @pytest.mark.asyncio
 async def test_static_approval_asks_and_declined_calls_do_not_run() -> None:
     confirm = Recorder(answer=False)
-    toolbox = Toolbox(BankTools(), middleware=[ApprovalMiddleware(confirm)])
+    toolbox = Toolbox(toolsets=(BankTools(),), middleware=[ApprovalMiddleware(confirm)])
 
-    assert await toolbox.execute("balance") == "100"
-    assert await toolbox.execute("close") == "Tool call declined by the user"
+    assert await toolbox.execute(ToolRequest("balance")) == "100"
+    assert (
+        await toolbox.execute(ToolRequest("close")) == "Tool call declined by the user"
+    )
     assert confirm.asked == ["close"]
 
     confirm.answer = True
-    assert await toolbox.execute("close") == "closed"
+    assert await toolbox.execute(ToolRequest("close")) == "closed"
 
 
 @pytest.mark.asyncio
 async def test_predicate_sees_validated_params() -> None:
     confirm = Recorder(answer=False)
     toolbox = Toolbox(
-        BankTools(),
+        toolsets=(BankTools(),),
         middleware=[ApprovalMiddleware(confirm, decline_message="No.")],
     )
 
-    small = await toolbox.execute("transfer", {"amount": "20", "to": "acct"})
-    large = await toolbox.execute("transfer", {"amount": 500, "to": "acct"})
+    small = await toolbox.execute(
+        ToolRequest("transfer", {"amount": "20", "to": "acct"})
+    )
+    large = await toolbox.execute(
+        ToolRequest("transfer", {"amount": 500, "to": "acct"})
+    )
 
     assert small == "sent 20 to acct"
     assert large == "No."
@@ -83,14 +90,14 @@ async def test_async_confirm_is_awaited() -> None:
     async def confirm(call: ToolCall) -> bool:
         return call.arguments["to"] == "trusted"
 
-    toolbox = Toolbox(BankTools(), middleware=[ApprovalMiddleware(confirm)])
+    toolbox = Toolbox(toolsets=(BankTools(),), middleware=[ApprovalMiddleware(confirm)])
 
-    assert await toolbox.execute("transfer", {"amount": 500, "to": "trusted"}) == (
-        "sent 500 to trusted"
-    )
-    assert await toolbox.execute("transfer", {"amount": 500, "to": "other"}) == (
-        "Tool call declined by the user"
-    )
+    assert await toolbox.execute(
+        ToolRequest("transfer", {"amount": 500, "to": "trusted"})
+    ) == ("sent 500 to trusted")
+    assert await toolbox.execute(
+        ToolRequest("transfer", {"amount": 500, "to": "other"})
+    ) == ("Tool call declined by the user")
 
 
 @pytest.mark.asyncio
@@ -98,11 +105,11 @@ async def test_unknown_and_unavailable_tools_are_not_offered_for_approval() -> N
     confirm = Recorder(answer=True)
     tools = BankTools()
     tools.open = False
-    toolbox = Toolbox(tools, middleware=[ApprovalMiddleware(confirm)])
+    toolbox = Toolbox(toolsets=(tools,), middleware=[ApprovalMiddleware(confirm)])
 
     for name in ("missing", "transfer"):
         with pytest.raises(LookupError):
-            await toolbox.execute(name, {"amount": 500, "to": "x"})
+            await toolbox.execute(ToolRequest(name, {"amount": 500, "to": "x"}))
     assert confirm.asked == []
 
 
@@ -110,11 +117,13 @@ async def test_unknown_and_unavailable_tools_are_not_offered_for_approval() -> N
 async def test_invalid_arguments_fail_before_asking_the_user() -> None:
     confirm = Recorder(answer=True)
     toolbox = Toolbox(
-        BankTools(),
+        toolsets=(BankTools(),),
         middleware=[ErrorBoundaryMiddleware(), ApprovalMiddleware(confirm)],
     )
 
-    result = await toolbox.execute("transfer", {"amount": "lots", "to": "x"})
+    result = await toolbox.execute(
+        ToolRequest("transfer", {"amount": "lots", "to": "x"})
+    )
 
     assert isinstance(result, str)
     assert result.startswith("Tool failed:")

@@ -1,6 +1,6 @@
 import pytest
 
-from toolbx import Tool, Toolbox, Toolset, tool
+from toolbx import Tool, Toolbox, ToolRequest, Toolset, tool
 
 
 @pytest.mark.asyncio
@@ -16,13 +16,13 @@ async def test_constructor_state_controls_availability_on_each_export_and_call()
             return "reset"
 
     tools = AdminTools()
-    toolbox = Toolbox(tools)
+    toolbox = Toolbox(toolsets=(tools,))
     assert toolbox.schemas() == toolbox.to_openai() == toolbox.to_anthropic() == []
     with pytest.raises(LookupError, match="Unknown tool"):
-        await toolbox.execute("reset")
+        await toolbox.execute(ToolRequest("reset"))
     tools.enabled = True
     assert [schema.name for schema in toolbox.schemas()] == ["reset"]
-    assert await toolbox.execute("reset") == "reset"
+    assert await toolbox.execute(ToolRequest("reset")) == "reset"
     tools.enabled = False
     assert toolbox.schemas() == []
 
@@ -39,9 +39,9 @@ def test_only_toolset_instances_can_be_registered() -> None:
     with pytest.raises(TypeError, match="Toolset instance"):
         Toolbox().add(Plain(), namespace="plain")
     with pytest.raises(TypeError, match="expects an instance"):
-        Toolbox(Empty)
+        Toolbox(toolsets=(Empty,))
     with pytest.raises(ValueError, match="does not define any tools"):
-        Toolbox(Empty())
+        Toolbox(toolsets=(Empty(),))
 
 
 @pytest.mark.parametrize("kind", [staticmethod, classmethod])
@@ -79,7 +79,7 @@ def test_unmarked_overrides_and_helpers_are_not_exposed() -> None:
         def other_helper(cls) -> None:
             pass
 
-    assert [schema.name for schema in Toolbox(Derived()).schemas()] == [
+    assert [schema.name for schema in Toolbox(toolsets=(Derived(),)).schemas()] == [
         "derived_second"
     ]
 
@@ -96,7 +96,7 @@ def test_decorator_metadata_is_copied_and_registered_with_the_bound_method() -> 
     tools = MetadataTools()
     tags.append("write")
     metadata["owner"] = "changed"
-    registered = Toolbox(tools).get("metadata_read")
+    registered = Toolbox(toolsets=(tools,)).get("metadata_read")
     assert registered.fn.__self__ is tools
     assert registered.namespace == "metadata"
     assert registered.local_name == "read"
@@ -131,7 +131,7 @@ def test_docstring_is_the_description_fallback() -> None:
         def other(self) -> None:
             """Ignored docstring."""
 
-    toolbox = Toolbox(DocTools())
+    toolbox = Toolbox(toolsets=(DocTools(),))
     assert toolbox.get("lookup").description == (
         "Look up a record.\n\nReturns nothing yet."
     )

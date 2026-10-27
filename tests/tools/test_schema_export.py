@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 
-from toolbx import Toolbox, Toolset, build_schema, tool
+from toolbx import Toolbox, ToolRequest, Toolset, build_schema, tool
 
 
 class Address(BaseModel):
@@ -47,7 +47,7 @@ def _contains_key(node: Any, key: str) -> bool:
 
 
 def test_schemas_omit_pydantic_titles_but_keep_a_title_property() -> None:
-    schema = Toolbox(PeopleTools())["create"].input_schema
+    schema = Toolbox(toolsets=(PeopleTools(),))["create"].input_schema
 
     assert "title" not in schema
     assert "title" not in schema["properties"]["nickname"]
@@ -65,7 +65,7 @@ def test_data_values_named_title_are_preserved() -> None:
 
 
 def test_inline_refs_replaces_defs_and_rejects_recursion() -> None:
-    schema = Toolbox(PeopleTools()).schemas()[0]
+    schema = Toolbox(toolsets=(PeopleTools(),)).schemas()[0]
     inlined = schema.inline_refs().input_schema
 
     assert not _contains_key(inlined, "$ref")
@@ -79,13 +79,13 @@ def test_inline_refs_replaces_defs_and_rejects_recursion() -> None:
             pass
 
     with pytest.raises(ValueError, match="'Node' is recursive"):
-        Toolbox(Trees()).schemas()[0].inline_refs()
+        Toolbox(toolsets=(Trees(),)).schemas()[0].inline_refs()
 
 
 def test_strict_openai_export_requires_all_fields_and_nullable_optionals() -> None:
     exported = {
         item["function"]["name"]: item["function"]
-        for item in Toolbox(PeopleTools()).to_openai(strict=True)
+        for item in Toolbox(toolsets=(PeopleTools(),)).to_openai(strict=True)
     }
     create = exported["create"]
     parameters = create["parameters"]
@@ -109,35 +109,37 @@ def test_strict_openai_export_requires_all_fields_and_nullable_optionals() -> No
 
     count = exported["get_HTTP"]["parameters"]
     assert count["required"] == ["limit", "tag"]
-    assert "strict" not in Toolbox(PeopleTools()).to_openai()[0]["function"]
+    assert "strict" not in Toolbox(toolsets=(PeopleTools(),)).to_openai()[0]["function"]
 
 
 @pytest.mark.asyncio
 async def test_strict_nulls_for_optional_fields_fall_back_to_defaults() -> None:
     tools = PeopleTools()
-    toolbox = Toolbox(tools)
+    toolbox = Toolbox(toolsets=(tools,))
 
     result = await toolbox.execute(
-        "create",
-        {
-            "title": "Dr",
-            "address": {"city": "Berlin", "zip_code": None},
-            "nickname": None,
-        },
+        ToolRequest(
+            "create",
+            {
+                "title": "Dr",
+                "address": {"city": "Berlin", "zip_code": None},
+                "nickname": None,
+            },
+        )
     )
     assert result == "none"
     assert tools.received[0].address.zip_code is None
 
-    assert await toolbox.execute("get_HTTP", {"limit": None, "tag": None}) == (
-        "10:None"
-    )
+    assert await toolbox.execute(
+        ToolRequest("get_HTTP", {"limit": None, "tag": None})
+    ) == ("10:None")
 
 
 @pytest.mark.asyncio
 async def test_null_for_a_required_field_is_still_rejected() -> None:
     with pytest.raises(ValueError, match="title"):
-        await Toolbox(PeopleTools()).execute(
-            "create", {"title": None, "address": {"city": "Berlin"}}
+        await Toolbox(toolsets=(PeopleTools(),)).execute(
+            ToolRequest("create", {"title": None, "address": {"city": "Berlin"}})
         )
 
 
@@ -150,11 +152,14 @@ async def test_nulls_inside_lists_of_nested_models_are_dropped() -> None:
         def walk(self, node: Node) -> None:
             seen.append(node)
 
-    await Toolbox(Trees()).execute(
-        "walk", {"value": 1, "children": [{"value": 2, "children": None}]}
+    await Toolbox(toolsets=(Trees(),)).execute(
+        ToolRequest("walk", {"value": 1, "children": [{"value": 2, "children": None}]})
     )
     assert seen[0].children[0].children == []
 
 
 def test_generated_model_names_keep_acronyms() -> None:
-    assert Toolbox(PeopleTools())["get_HTTP"]._input_model.__name__ == "GetHTTPParams"
+    assert (
+        Toolbox(toolsets=(PeopleTools(),))["get_HTTP"]._input_model.__name__
+        == "GetHTTPParams"
+    )

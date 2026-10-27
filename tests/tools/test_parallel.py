@@ -25,14 +25,17 @@ async def test_execute_accepts_json_and_preserves_the_call_id_in_middleware() ->
         seen.append((call.call_id, call.arguments))
         return await call_next(call)
 
-    toolbox = Toolbox(Calls(), middleware=[record])
-    assert await toolbox.execute("echo", '{"value": "7"}', call_id="call-7") == 7
+    toolbox = Toolbox(toolsets=(Calls(),), middleware=[record])
+    assert (
+        await toolbox.execute(ToolRequest("echo", '{"value": "7"}', call_id="call-7"))
+        == 7
+    )
     assert seen == [("call-7", {"value": "7"})]
     with pytest.raises(json.JSONDecodeError):
-        await toolbox.execute("echo", "invalid JSON")
+        await toolbox.execute(ToolRequest("echo", "invalid JSON"))
     for arguments in ("[1, 2]", "null", "3", "true"):
         with pytest.raises(TypeError, match="JSON object"):
-            await toolbox.execute("echo", arguments)
+            await toolbox.execute(ToolRequest("echo", arguments))
 
 
 @pytest.mark.asyncio
@@ -49,7 +52,12 @@ async def test_parallel_calls_overlap_and_keep_order_and_individual_errors() -> 
             await both_started.wait()
             return value
 
-    toolbox = Toolbox(Calls(), Parallel())
+    toolbox = Toolbox(
+        toolsets=(
+            Calls(),
+            Parallel(),
+        )
+    )
     results = await asyncio.wait_for(
         toolbox.execute_many(
             [
@@ -84,7 +92,9 @@ async def test_cancelling_a_batch_cancels_its_outstanding_calls() -> None:
             finally:
                 cancelled.set()
 
-    batch = asyncio.create_task(Toolbox(Waiting()).execute_many([ToolRequest("wait")]))
+    batch = asyncio.create_task(
+        Toolbox(toolsets=(Waiting(),)).execute_many([ToolRequest("wait")])
+    )
     await asyncio.wait_for(started.wait(), timeout=2)
     batch.cancel()
     with pytest.raises(asyncio.CancelledError):
@@ -103,7 +113,7 @@ async def test_blocking_sync_calls_run_in_parallel_without_blocking_the_loop() -
             return value
 
     results = await asyncio.wait_for(
-        Toolbox(Blocking()).execute_many(
+        Toolbox(toolsets=(Blocking(),)).execute_many(
             [ToolRequest("wait", {"value": 1}), ToolRequest("wait", {"value": 2})]
         ),
         timeout=3,

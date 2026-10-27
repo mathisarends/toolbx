@@ -1,6 +1,6 @@
 import pytest
 
-from toolbx import Toolbox, Toolset, tool
+from toolbx import Toolbox, ToolRequest, Toolset, tool
 from toolbx import tool as mark_tool
 
 
@@ -30,8 +30,13 @@ async def test_toolset_uses_default_namespace_and_constructor_dependencies() -> 
         "catalog_search",
         "catalog_get",
     ]
-    assert await toolbox.execute("catalog_search", {"query": "di"}) == "docs:di"
-    assert await toolbox.execute("catalog_get", {"entry_id": "1"}) == "docs#1"
+    assert (
+        await toolbox.execute(ToolRequest("catalog_search", {"query": "di"}))
+        == "docs:di"
+    )
+    assert (
+        await toolbox.execute(ToolRequest("catalog_get", {"entry_id": "1"})) == "docs#1"
+    )
 
 
 @pytest.mark.parametrize(
@@ -189,24 +194,40 @@ def test_collision_between_toolsets_names_the_existing_toolset() -> None:
         toolbox.add(Second())
 
 
-def test_constructor_registers_toolsets_in_order() -> None:
+@pytest.mark.parametrize("collection", [tuple, list])
+def test_constructor_registers_toolsets_in_order(collection) -> None:
 
     class Files(Toolset):
         @tool("Read")
         def read(self) -> None:
             pass
 
-    toolbox = Toolbox(CatalogTools(CatalogService("docs")), Files())
+    toolsets = collection((CatalogTools(CatalogService("docs")), Files()))
+    toolbox = Toolbox(toolsets=toolsets)
     assert [item.name for item in toolbox] == [
         "catalog_search",
         "catalog_get",
         "files_read",
     ]
+    assert Toolbox(toolsets).names() == toolbox.names()
+
+
+def test_constructor_requires_an_explicit_sequence_of_instances() -> None:
+    tools = CatalogTools(CatalogService("docs"))
+    with pytest.raises(TypeError, match="sequence of Toolset instances"):
+        Toolbox(tools)
+    with pytest.raises(TypeError, match="Toolset instance"):
+        Toolbox(toolsets=(object(),))
 
 
 def test_constructor_rejects_colliding_toolsets() -> None:
     with pytest.raises(ValueError, match="pass namespace="):
-        Toolbox(CatalogTools(CatalogService("a")), CatalogTools(CatalogService("b")))
+        Toolbox(
+            toolsets=(
+                CatalogTools(CatalogService("a")),
+                CatalogTools(CatalogService("b")),
+            )
+        )
 
 
 def test_include_selects_tools_by_local_name() -> None:

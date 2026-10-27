@@ -21,8 +21,9 @@ class SearchTools(Toolset):
 
 
 async def main() -> None:
-    toolbox = Toolbox(SearchTools(SearchClient("docs")))
-    print(await toolbox.execute("search_search", {"query": "toolbox"}))
+    search = SearchTools(SearchClient("docs"))
+    toolbox = Toolbox(toolsets=(search,))
+    print(await toolbox.call(search.search, query="toolbox"))
 
 
 if __name__ == "__main__":

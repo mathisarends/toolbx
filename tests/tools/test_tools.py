@@ -8,6 +8,7 @@ from toolbx import (
     CallLoggingMiddleware,
     ErrorBoundaryMiddleware,
     Toolbox,
+    ToolRequest,
     Toolset,
 )
 from toolbx import tool as mark_tool
@@ -33,8 +34,8 @@ async def test_plain_signature_is_validated_and_sync_result_is_returned() -> Non
             return a + b
 
     toolbox.add(DefinedTools1())
-    assert await toolbox.execute("add", {"a": "2"}) == 3
-    invalid = await toolbox.execute("add", {})
+    assert await toolbox.execute(ToolRequest("add", {"a": "2"})) == 3
+    invalid = await toolbox.execute(ToolRequest("add", {}))
     assert isinstance(invalid, str)
     assert invalid.startswith("Tool failed: ")
     assert "a" in invalid
@@ -85,7 +86,7 @@ async def test_tool_errors_are_logged_and_returned_by_the_boundary(
 
     toolbox.add(DefinedTools4())
     with caplog.at_level(logging.ERROR, logger="toolbx.tools.middleware"):
-        result = await toolbox.execute("internal_failure")
+        result = await toolbox.execute(ToolRequest("internal_failure"))
     assert "Tool 'internal_failure' failed" in caplog.text
     assert result == "Tool failed: secret"
 
@@ -101,7 +102,7 @@ async def test_tools_do_not_install_an_error_boundary_by_default() -> None:
 
     toolbox.add(DefinedTools5())
     with pytest.raises(RuntimeError, match="secret"):
-        await toolbox.execute("internal_failure")
+        await toolbox.execute(ToolRequest("internal_failure"))
 
 
 def test_duplicate_registration_is_rejected() -> None:

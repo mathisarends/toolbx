@@ -12,7 +12,7 @@ from llmify import (
     UserMessage,
 )
 
-from toolbx import Toolbox, to_text
+from toolbx import Toolbox, ToolRequest, to_text
 
 OnToolCall = Callable[[str, dict[str, Any]], None]
 OnToolResult = Callable[[str, object], None]
@@ -100,7 +100,7 @@ class Agent:
             if self._on_tool_call:
                 self._on_tool_call(call.function.name, arguments)
             return await self._toolbox.execute(
-                call.function.name, arguments, call_id=call.id
+                ToolRequest(call.function.name, arguments, call_id=call.id)
             )
         except Exception as error:
             return error

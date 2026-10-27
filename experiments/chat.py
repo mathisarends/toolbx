@@ -78,7 +78,7 @@ class DemoTools(Toolset, namespace=None):
 async def main() -> None:
     console = Console()
     toolbox = Toolbox(
-        DemoTools(UserInfo(name="Mathis", is_admin=True)),
+        toolsets=(DemoTools(UserInfo(name="Mathis", is_admin=True)),),
         middleware=[CallLoggingMiddleware(), ApprovalMiddleware(console.confirm)],
     )
     model = experiment_model("gpt-5.6-terra", on_retry=console.on_retry)

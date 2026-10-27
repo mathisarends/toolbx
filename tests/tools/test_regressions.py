@@ -3,7 +3,7 @@ import logging
 import pytest
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from toolbx import ErrorBoundaryMiddleware, Toolbox, Toolset, tool
+from toolbx import ErrorBoundaryMiddleware, Toolbox, ToolRequest, Toolset, tool
 
 
 def test_exported_schemas_can_be_transformed_without_changing_the_tool() -> None:
@@ -12,7 +12,7 @@ def test_exported_schemas_can_be_transformed_without_changing_the_tool() -> None
         def search(self, query: str) -> str:
             return query
 
-    toolbox = Toolbox(Search())
+    toolbox = Toolbox(toolsets=(Search(),))
     native = toolbox.schemas()[0]
     openai = toolbox.to_openai()[0]
     anthropic = toolbox.to_anthropic()[0]
@@ -45,8 +45,8 @@ def test_merge_leaves_the_destination_unchanged_on_a_late_collision() -> None:
         def last(self) -> None:
             pass
 
-    destination = Toolbox(Existing())
-    incoming = Toolbox(Incoming())
+    destination = Toolbox(toolsets=(Existing(),))
+    incoming = Toolbox(toolsets=(Incoming(),))
     original = list(destination)
     with pytest.raises(ValueError, match=r"shared.*already registered"):
         destination.merge(incoming)
@@ -94,11 +94,11 @@ async def test_bound_methods_keep_regular_parameters_named_cls_and_self() -> Non
         def echo(instance, self: str) -> str:
             return self
 
-    toolbox = Toolbox(Names())
-    assert await toolbox.execute("classify", {"cls": "news", "text": "hello"}) == (
-        "news:hello"
-    )
-    assert await toolbox.execute("echo", {"self": "hello"}) == "hello"
+    toolbox = Toolbox(toolsets=(Names(),))
+    assert await toolbox.execute(
+        ToolRequest("classify", {"cls": "news", "text": "hello"})
+    ) == ("news:hello")
+    assert await toolbox.execute(ToolRequest("echo", {"self": "hello"})) == "hello"
 
 
 @pytest.mark.asyncio
@@ -116,7 +116,12 @@ async def test_params_model_and_nested_models_reach_the_method_as_models() -> No
             assert isinstance(params.item, Item)
             return params.item.value
 
-    assert await Toolbox(Models()).execute("read", {"item": {"value": "7"}}) == 7
+    assert (
+        await Toolbox(toolsets=(Models(),)).execute(
+            ToolRequest("read", {"item": {"value": "7"}})
+        )
+        == 7
+    )
 
 
 @pytest.mark.asyncio
@@ -129,8 +134,11 @@ async def test_optional_error_boundary_names_exceptions_without_text(
         def fail(self) -> None:
             raise exception()
 
-    toolbox = Toolbox(Failure(), middleware=[ErrorBoundaryMiddleware()])
-    assert await toolbox.execute("fail") == f"Tool failed: {exception.__name__}"
+    toolbox = Toolbox(toolsets=(Failure(),), middleware=[ErrorBoundaryMiddleware()])
+    assert (
+        await toolbox.execute(ToolRequest("fail"))
+        == f"Tool failed: {exception.__name__}"
+    )
 
 
 @pytest.mark.parametrize("explicit_params", [False, True])
@@ -175,13 +183,15 @@ async def test_model_parameters_stay_nested_unless_params_is_explicit() -> None:
         def create_flat(self, user: User) -> str:
             return user.name
 
-    toolbox = Toolbox(Users())
+    toolbox = Toolbox(toolsets=(Users(),))
     nested, extended, flat = toolbox.schemas()
     assert set(nested.input_schema["properties"]) == {"user"}
     assert set(extended.input_schema["properties"]) == {"user", "active"}
     assert set(flat.input_schema["properties"]) == {"name"}
-    assert await toolbox.execute("create", {"user": {"name": "Ada"}}) == "Ada"
-    assert await toolbox.execute("create_flat", {"name": "Ada"}) == "Ada"
+    assert (
+        await toolbox.execute(ToolRequest("create", {"user": {"name": "Ada"}})) == "Ada"
+    )
+    assert await toolbox.execute(ToolRequest("create_flat", {"name": "Ada"})) == "Ada"
 
 
 @pytest.mark.asyncio
@@ -193,15 +203,15 @@ async def test_call_logging_keeps_arguments_out_of_info_logs(caplog) -> None:
         def accept(self, token: str) -> None:
             pass
 
-    toolbox = Toolbox(Sensitive(), middleware=[CallLoggingMiddleware()])
+    toolbox = Toolbox(toolsets=(Sensitive(),), middleware=[CallLoggingMiddleware()])
     with caplog.at_level(logging.INFO, logger="toolbx.tools.middleware"):
-        await toolbox.execute("accept", {"token": "sensitive-value"})
+        await toolbox.execute(ToolRequest("accept", {"token": "sensitive-value"}))
     assert "accept called" in caplog.text
     assert "sensitive-value" not in caplog.text
 
     caplog.clear()
     with caplog.at_level(logging.DEBUG, logger="toolbx.tools.middleware"):
-        await toolbox.execute("accept", {"token": "sensitive-value"})
+        await toolbox.execute(ToolRequest("accept", {"token": "sensitive-value"}))
     assert "sensitive-value" in caplog.text
 
 
@@ -221,11 +231,11 @@ async def test_unknown_arguments_are_rejected_in_both_definition_styles() -> Non
             assert isinstance(params, Params)
             return params.value
 
-    toolbox = Toolbox(Inputs())
+    toolbox = Toolbox(toolsets=(Inputs(),))
     for name in ("signature", "explicit"):
-        assert await toolbox.execute(name, {"value": "7"}) == 7
+        assert await toolbox.execute(ToolRequest(name, {"value": "7"})) == 7
         with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
-            await toolbox.execute(name, {"value": 7, "hallucinated": True})
+            await toolbox.execute(ToolRequest(name, {"value": 7, "hallucinated": True}))
         assert toolbox.get(name).input_schema["additionalProperties"] is False
     assert Params.model_config["extra"] == "ignore"
 
@@ -242,6 +252,6 @@ async def test_execution_uses_the_parameter_binding_resolved_at_registration(
         def read(self, params: Params) -> int:
             return params.value
 
-    toolbox = Toolbox(Inputs())
+    toolbox = Toolbox(toolsets=(Inputs(),))
     monkeypatch.setattr(Inputs.read, "__annotations__", {"params": "UndefinedType"})
-    assert await toolbox.execute("read", {"value": "7"}) == 7
+    assert await toolbox.execute(ToolRequest("read", {"value": "7"})) == 7

@@ -25,12 +25,13 @@ async def confirm(call: ToolCall) -> bool:
     return False
 
 
-toolbox = Toolbox(BankTools(), middleware=[ApprovalMiddleware(confirm)])
+bank = BankTools()
+toolbox = Toolbox(toolsets=(bank,), middleware=[ApprovalMiddleware(confirm)])
 
 
 async def main() -> None:
-    print(await toolbox.execute("transfer", {"amount": 50, "to": "acct-42"}))
-    print(await toolbox.execute("transfer", {"amount": 500, "to": "acct-42"}))
+    print(await toolbox.call(bank.transfer, amount=50, to="acct-42"))
+    print(await toolbox.call(bank.transfer, amount=500, to="acct-42"))
 
 
 if __name__ == "__main__":

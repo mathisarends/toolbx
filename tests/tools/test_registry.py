@@ -2,7 +2,7 @@ import logging
 
 import pytest
 
-from toolbx import Toolbox, ToolCall, ToolHandler, Toolset, tool
+from toolbx import Toolbox, ToolCall, ToolHandler, ToolRequest, Toolset, tool
 
 
 class FileTools(Toolset, namespace=None):
@@ -23,7 +23,7 @@ class FileTools(Toolset, namespace=None):
 
 
 def test_registry_supports_lookup_membership_names_and_removal() -> None:
-    toolbox = Toolbox(FileTools())
+    toolbox = Toolbox(toolsets=(FileTools(),))
 
     assert toolbox.names() == ("read", "write", "delete")
     assert "read" in toolbox
@@ -48,7 +48,7 @@ async def test_subset_selects_by_name_or_tag_and_keeps_middleware() -> None:
         return await call_next(call)
 
     tools = FileTools()
-    toolbox = Toolbox(tools, middleware=[record])
+    toolbox = Toolbox(toolsets=(tools,), middleware=[record])
 
     readers = toolbox.subset(tags=["read"])
     assert readers.names() == ("read",)
@@ -56,7 +56,7 @@ async def test_subset_selects_by_name_or_tag_and_keeps_middleware() -> None:
         "read",
         "delete",
     )
-    assert await readers.execute("read") == "content"
+    assert await readers.execute(ToolRequest("read")) == "content"
     assert seen == ["read"]
 
     readers.remove("read")
@@ -65,7 +65,7 @@ async def test_subset_selects_by_name_or_tag_and_keeps_middleware() -> None:
 
 
 def test_subset_rejects_unknown_names_and_missing_selection() -> None:
-    toolbox = Toolbox(FileTools())
+    toolbox = Toolbox(toolsets=(FileTools(),))
 
     with pytest.raises(ValueError, match="Unknown tools: missing"):
         toolbox.subset(names=["missing"])
@@ -81,19 +81,19 @@ async def test_unavailable_tool_logs_the_real_reason_at_debug(
 ) -> None:
     tools = FileTools()
     tools.writable = False
-    toolbox = Toolbox(tools)
+    toolbox = Toolbox(toolsets=(tools,))
 
     with (
         caplog.at_level(logging.DEBUG, logger="toolbx.tools.toolbox"),
         pytest.raises(LookupError, match="Unknown tool 'write'"),
     ):
-        await toolbox.execute("write")
+        await toolbox.execute(ToolRequest("write"))
     assert "registered but currently unavailable" in caplog.text
 
 
 def test_tools_compare_by_identity_not_by_name() -> None:
-    first = Toolbox(FileTools())["read"]
-    second = Toolbox(FileTools())["read"]
+    first = Toolbox(toolsets=(FileTools(),))["read"]
+    second = Toolbox(toolsets=(FileTools(),))["read"]
 
     assert first.name == second.name
     assert first != second

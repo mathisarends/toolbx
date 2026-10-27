@@ -21,7 +21,7 @@ class DocsTools(Toolset, namespace=None):
         pass
 
 
-toolbox = Toolbox(DocsTools())
+toolbox = Toolbox(toolsets=(DocsTools(),))
 
 
 def show(label: str, schema: object) -> None:

@@ -9,6 +9,7 @@ from toolbx import (
     Toolbox,
     ToolCall,
     ToolMiddleware,
+    ToolRequest,
     Toolset,
     build_schema,
 )
@@ -54,7 +55,7 @@ async def test_custom_middleware_wraps_execution() -> None:
             return value * 2
 
     toolbox.add(DefinedTools1())
-    result = await toolbox.execute("double", {"value": "3"})
+    result = await toolbox.execute(ToolRequest("double", {"value": "3"}))
     assert result == 6
     assert events[0] == "before:3"
     assert events[1] == "after:6"
@@ -71,7 +72,7 @@ async def test_structured_tool_results_pass_through_unchanged() -> None:
             return payload
 
     toolbox.add(DefinedTools2())
-    assert await toolbox.execute("structured") is payload
+    assert await toolbox.execute(ToolRequest("structured")) is payload
 
 
 def test_registry_merge_iteration_and_replacement_are_explicit() -> None:

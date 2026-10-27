@@ -64,15 +64,16 @@ async def main() -> None:
             Product("p-3", "USB-C Dock"),
         ]
     )
-    toolbox = Toolbox(CatalogTools(catalog))
+    tools = CatalogTools(catalog)
+    toolbox = Toolbox(toolsets=(tools,))
 
     # The toolset namespace becomes part of each model-facing tool name.
     print([schema.name for schema in toolbox.schemas()])
 
     # to_text renders results the way a tool-result message expects them.
-    found = await toolbox.execute("catalog_search", {"query": "keyboard", "limit": 2})
+    found = await toolbox.call(tools.search, query="keyboard", limit=2)
     print(to_text(found))
-    print(to_text(await toolbox.execute("catalog_get", {"product_id": "p-3"})))
+    print(to_text(await toolbox.call(tools.get_product, product_id="p-3")))
 
     # A narrower view, e.g. for a sub-agent that may only look up products.
     lookup = toolbox.subset(names={"catalog_get"})

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import logging
-from collections.abc import Collection, Iterator, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from types import EllipsisType
 from typing import Any
 
@@ -26,9 +27,12 @@ class Toolbox:
 
     def __init__(
         self,
-        *toolsets: Toolset,
+        toolsets: Sequence[Toolset] = (),
+        *,
         middleware: Sequence[ToolMiddleware] | None = None,
     ) -> None:
+        if not isinstance(toolsets, Sequence):
+            raise TypeError("toolsets must be a sequence of Toolset instances")
         self._tools: dict[str, Tool] = {}
         self._middleware = tuple(middleware or ())
         self._handler = compose(self._middleware, self._invoke)
@@ -161,18 +165,43 @@ class Toolbox:
         }
         return selected
 
+    async def call(
+        self,
+        method: Callable[..., object],
+        /,
+        **arguments: Any,
+    ) -> object:
+        if not inspect.ismethod(method) or not isinstance(method.__self__, Toolset):
+            raise TypeError("call expects a bound Toolset method")
+        matches = [
+            tool
+            for tool in self._tools.values()
+            if getattr(tool.fn, "__self__", None) is method.__self__
+            and getattr(tool.fn, "__func__", None) is method.__func__
+        ]
+        if not matches:
+            raise LookupError(
+                f"Method '{method.__qualname__}' is not registered in this toolbox"
+            )
+        if len(matches) > 1:
+            names = ", ".join(tool.name for tool in matches)
+            raise ValueError(
+                f"Method '{method.__qualname__}' is registered more than once "
+                f"({names}); use execute(ToolRequest(...)) to select a name"
+            )
+        return await self.execute(ToolRequest(matches[0].name, arguments))
+
     async def execute(
         self,
-        name: str,
-        arguments: Mapping[str, Any] | str | None = None,
-        *,
-        call_id: str | None = None,
+        request: ToolRequest,
     ) -> object:
+        if not isinstance(request, ToolRequest):
+            raise TypeError("execute expects a ToolRequest")
         call = ToolCall(
-            name=name,
-            arguments=_parse_arguments(arguments),
-            tool=self._tools.get(name),
-            call_id=call_id,
+            name=request.name,
+            arguments=_parse_arguments(request.arguments),
+            tool=self._tools.get(request.name),
+            call_id=request.call_id,
         )
         return await self._handler(call)
 
@@ -189,10 +218,7 @@ class Toolbox:
         Cancelling the batch cancels its outstanding calls.
         """
         return await asyncio.gather(
-            *(
-                self.execute(call.name, call.arguments, call_id=call.call_id)
-                for call in calls
-            ),
+            *(self.execute(call) for call in calls),
             return_exceptions=return_exceptions,
         )
 

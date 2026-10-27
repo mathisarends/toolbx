@@ -31,16 +31,17 @@ class WorkTools(Toolset, namespace=None):
         raise RuntimeError("disk full")
 
 
+tools = WorkTools()
 toolbox = Toolbox(
-    WorkTools(),
+    toolsets=(tools,),
     middleware=[ErrorBoundaryMiddleware(), CallLoggingMiddleware(), timing],
 )
 
 
 async def main() -> None:
-    print(await toolbox.execute("slow_task"))
+    print(await toolbox.call(tools.slow_task))
     # The error boundary turns the exception into text the model can read.
-    print(await toolbox.execute("broken"))
+    print(await toolbox.call(tools.broken))
 
 
 if __name__ == "__main__":

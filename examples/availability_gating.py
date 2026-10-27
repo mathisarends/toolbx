@@ -14,11 +14,11 @@ class AdminTools(Toolset, namespace=None):
 
 async def main() -> None:
     tools = AdminTools()
-    toolbox = Toolbox(tools)
+    toolbox = Toolbox(toolsets=(tools,))
     print("disabled:", [schema.name for schema in toolbox.schemas()])
     tools.enabled = True
     print("enabled:", [schema.name for schema in toolbox.schemas()])
-    print(await toolbox.execute("reset"))
+    print(await toolbox.call(tools.reset))
     tools.enabled = False
     print("disabled again:", [schema.name for schema in toolbox.schemas()])
 

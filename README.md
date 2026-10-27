@@ -2,8 +2,8 @@
 
 Provider-neutral tool definitions and execution for Python agents. Define tools
 as instance methods on a `Toolset`, pass dependencies through its constructor,
-and compose the instances in a `Toolbox`. The package supplies schemas,
-validation and middleware; your application owns the agent loop and adapters.
+and compose the instances with `Toolbox(toolsets=(tools,))`. The package supplies
+schemas, validation and middleware; your application owns the agent loop and adapters.
 
 Requires Python 3.13 or newer.
 
@@ -27,17 +27,37 @@ class CalculatorTools(Toolset, namespace=None):
         return a + b
 
 
-toolbox = Toolbox(CalculatorTools())
+calculator = CalculatorTools()
+toolbox = Toolbox(toolsets=(calculator,))
 openai_tools = toolbox.to_openai()
 anthropic_tools = toolbox.to_anthropic()
 native_tools = toolbox.schemas()
 
-result = await toolbox.execute("add", '{"a": 2, "b": 3}', call_id="call-1")
+result = await toolbox.call(calculator.add, a=2, b=3)
 assert result == 5
 ```
 
 Tool methods keep their normal Python calling convention and can be called
 and tested directly. Only methods marked with `@tool` become model-facing tools.
+Use `toolbox.call(method, **arguments)` to run a registered method through
+validation, availability checks and middleware. Calling the method directly
+bypasses that pipeline.
+
+For model-generated calls, pass a provider-neutral `ToolRequest` to `execute`:
+
+```python
+from toolbx import ToolRequest
+
+result = await toolbox.execute(
+    ToolRequest("add", '{"a": 2, "b": 3}', call_id="call-1")
+)
+```
+
+`call` resolves the bound method on the exact registered instance, independent
+of its exported name or namespace. Unregistered methods raise `LookupError`.
+If the same method is registered under multiple names, `call` raises
+`ValueError`; select the exported name explicitly with `execute(ToolRequest(...))`.
+All keyword arguments to `call`, including `call_id`, belong to the tool.
 
 ## Parameters and dependencies
 
@@ -65,8 +85,9 @@ class CatalogTools(Toolset):
         return await self.client.get(product_id)
 
 
-toolbox = Toolbox(CatalogTools(client))
-result = await toolbox.execute("catalog_search", {"query": "keyboard"})
+catalog = CatalogTools(client)
+toolbox = Toolbox(toolsets=(catalog,))
+result = await toolbox.call(catalog.search, query="keyboard")
 ```
 
 Constructor dependencies never appear in the tool schema. With `params=Model`,
@@ -81,6 +102,8 @@ params models are adapted without changing the application's model configuration
 A model used in a normal signature stays nested: `create(user: User)` accepts
 `{"user": {"name": "Ada"}}`. Adding another method parameter does not change
 that shape. Only an explicit `params=User` uses `{"name": "Ada"}` at the top level.
+`call` uses the same top-level input fields as `execute`, including for explicit
+params models; pass `query="keyboard"`, rather than `params=SearchParams(...)`.
 
 ### Schema export
 
@@ -103,9 +126,14 @@ A toolset's default namespace is its class name in snake case, without a
 or use `namespace=None` to expose local names directly.
 
 ```python
-toolbox = Toolbox(CatalogTools(primary_client))
+primary = CatalogTools(primary_client)
+toolbox = Toolbox(toolsets=(primary,))
 toolbox.add(CatalogTools(archive_client), namespace="archive", include={"search"})
 ```
+
+The constructor accepts a sequence of toolset instances, such as
+`toolsets=(primary, archive)` or `toolsets=[primary, archive]`.
+An empty `Toolbox()` can be populated later with `add`.
 
 `include` and `exclude` select local tool names. Registration and `merge` are
 atomic: a collision leaves the destination unchanged. `merge(other, replace=True)`
@@ -138,19 +166,19 @@ class AdminTools(Toolset):
 
 
 tools = AdminTools()
-toolbox = Toolbox(tools)
+toolbox = Toolbox(toolsets=(tools,))
 assert toolbox.schemas() == []
 tools.enabled = True
 assert toolbox.schemas()[0].name == "admin_reset"
 ```
 
-Unavailable tools are omitted from all schema formats and direct execution
-raises `LookupError`. Construct separate toolset instances for independent
-request-specific state.
+Unavailable tools are omitted from all schema formats; both `call` and `execute`
+raise `LookupError` when invoking them. Construct separate toolset instances for
+independent request-specific state.
 
 ## Results and errors
 
-`execute` returns the tool's value unchanged. Validation errors and tool
+`call` and `execute` return the tool's value unchanged. Validation errors and tool
 exceptions propagate to the caller. There is no result wrapper; the agent loop
 maps exceptions into its provider's error format and serializes values.
 `to_text(result)` covers the common case: strings pass through unchanged, and
@@ -193,7 +221,10 @@ async def trace(call: ToolCall, call_next: ToolHandler) -> object:
     return await call_next(call)
 
 
-toolbox = Toolbox(CalculatorTools(), middleware=[trace, CallLoggingMiddleware()])
+toolbox = Toolbox(
+    toolsets=(CalculatorTools(),),
+    middleware=[trace, CallLoggingMiddleware()],
+)
 ```
 
 Call logging emits tool names and durations at INFO; raw arguments require DEBUG.
@@ -231,7 +262,10 @@ async def confirm(call: ToolCall) -> bool:
     return await ask_user(f"Run {call.name}({call.arguments})?")
 
 
-toolbox = Toolbox(BankTools(), middleware=[ApprovalMiddleware(confirm)])
+toolbox = Toolbox(
+    toolsets=(BankTools(),),
+    middleware=[ApprovalMiddleware(confirm)],
+)
 ```
 
 Without the middleware, `requires_approval` does not gate execution;
@@ -260,6 +294,13 @@ This API deliberately breaks earlier versions:
 
 Changes since 0.4.0 that break existing code:
 
+- Pass toolset instances as a sequence: `Toolbox(toolsets=(tools,))` replaces
+  `Toolbox(tools)`, and `Toolbox(toolsets=(first, second))` replaces
+  `Toolbox(first, second)`.
+- `execute(ToolRequest(name, arguments, call_id=...))` replaces
+  `execute(name, arguments, call_id=...)`. Use `call(tools.method, **arguments)`
+  for Python calls through the same pipeline. `execute_many` still accepts a
+  sequence of `ToolRequest` objects.
 - Names are unified: `Tool(params_model=)`, `build_schema(params_model=)` and
   `tool.params_model` replace `param_model`; `tool.input_schema` and
   `ToolSchema.input_schema` replace `parameters`; `ToolCall.arguments` replaces

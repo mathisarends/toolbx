@@ -2,9 +2,9 @@ import asyncio
 
 from pydantic import BaseModel, Field
 
-from agenttoolkit import Tools, ToolSchemaFormat
+from agenttoolkit import Toolbox, ToolSchemaFormat
 
-tools = Tools()
+toolbox = Toolbox()
 
 
 class SearchParams(BaseModel):
@@ -12,7 +12,7 @@ class SearchParams(BaseModel):
     limit: int = Field(default=10, ge=1)
 
 
-@tools.tool("Search the documentation")
+@toolbox.tool("Search the documentation")
 def search(params: SearchParams) -> None:
     pass
 
@@ -20,13 +20,13 @@ def search(params: SearchParams) -> None:
 async def main() -> None:
     # Provider-neutral form: name/description/parameters, usable to hand-roll
     # an adapter for a client not covered by the two below.
-    native = tools.get_schema(ToolSchemaFormat.NATIVE)[0]
+    native = toolbox.get_schema(ToolSchemaFormat.NATIVE)[0]
     print("native:", native.model_dump())
 
-    openai = tools.get_schema(ToolSchemaFormat.OPENAI)[0]
+    openai = toolbox.get_schema(ToolSchemaFormat.OPENAI)[0]
     print("openai:", openai)
 
-    anthropic = tools.get_schema(ToolSchemaFormat.ANTHROPIC)[0]
+    anthropic = toolbox.get_schema(ToolSchemaFormat.ANTHROPIC)[0]
     print("anthropic:", anthropic)
 
 

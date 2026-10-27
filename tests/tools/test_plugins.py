@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from agenttoolkit import (
     Inject,
-    Tools,
+    Toolbox,
     tool,
 )
 
@@ -47,20 +47,20 @@ class SearchPlugin:
 @pytest.mark.asyncio
 async def test_plugin_registers_bound_methods_with_names_and_metadata() -> None:
     plugin = SearchPlugin("docs")
-    tools = Tools()
+    toolbox = Toolbox()
 
-    registered = tools.add_plugin(plugin, name="knowledge")
+    registered = toolbox.add_plugin(plugin, name="knowledge")
 
     assert [item.name for item in registered] == [
         "knowledge_search",
         "knowledge_fetch",
     ]
-    assert [schema.name for schema in tools.get_schema()] == [
+    assert [schema.name for schema in toolbox.get_schema()] == [
         "knowledge_search",
         "knowledge_fetch",
     ]
-    search = tools.get("knowledge_search")
-    fetch = tools.get("knowledge_fetch")
+    search = toolbox.get("knowledge_search")
+    fetch = toolbox.get("knowledge_fetch")
     assert search is not None
     assert fetch is not None
     assert search.fn.__self__ is plugin
@@ -70,9 +70,10 @@ async def test_plugin_registers_bound_methods_with_names_and_metadata() -> None:
     assert search.extra == {"owner": "knowledge"}
     assert search.format_status({"query": "DI"}) == "Searching for DI"
     assert fetch.requires_approval is True
-    assert tools.get("helper") is None
-    assert await tools.execute("knowledge_search", {"query": "DI"}) == ("docs:DI:10")
-    assert await tools.execute("knowledge_fetch", {"result_id": "r-1"}) == ("docs:r-1")
+    assert toolbox.get("helper") is None
+    assert await toolbox.execute("knowledge_search", {"query": "DI"}) == ("docs:DI:10")
+    fetched = await toolbox.execute("knowledge_fetch", {"result_id": "r-1"})
+    assert fetched == "docs:r-1"
 
 
 def test_plugin_methods_reject_inject_parameters() -> None:
@@ -82,19 +83,19 @@ def test_plugin_methods_reject_inject_parameters() -> None:
             pass
 
     with pytest.raises(TypeError, match="declare runtime dependencies"):
-        Tools().add_plugin(InvalidPlugin(), name="invalid")
+        Toolbox().add_plugin(InvalidPlugin(), name="invalid")
 
 
 def test_plugin_registration_is_atomic_on_existing_name_collision() -> None:
-    tools = Tools()
+    toolbox = Toolbox()
 
-    @tools.tool("Existing")
+    @toolbox.tool("Existing")
     def knowledge_fetch(result_id: str) -> str:
         return result_id
 
     with pytest.raises(ValueError, match="already registered"):
-        tools.add_plugin(SearchPlugin("docs"), name="knowledge")
-    assert [item.name for item in tools] == ["knowledge_fetch"]
+        toolbox.add_plugin(SearchPlugin("docs"), name="knowledge")
+    assert [item.name for item in toolbox] == ["knowledge_fetch"]
 
 
 def test_plugin_registration_is_atomic_on_invalid_method() -> None:
@@ -107,10 +108,10 @@ def test_plugin_registration_is_atomic_on_invalid_method() -> None:
         def invalid(self, *values: str) -> None:
             pass
 
-    tools = Tools()
+    toolbox = Toolbox()
     with pytest.raises(TypeError, match="cannot use variadic parameters"):
-        tools.add_plugin(InvalidPlugin(), name="invalid")
-    assert len(tools) == 0
+        toolbox.add_plugin(InvalidPlugin(), name="invalid")
+    assert len(toolbox) == 0
 
 
 def test_plugin_rejects_duplicate_local_tool_names() -> None:
@@ -124,13 +125,13 @@ def test_plugin_rejects_duplicate_local_tool_names() -> None:
             pass
 
     with pytest.raises(ValueError, match="duplicate tool 'same'"):
-        Tools().add_plugin(DuplicatePlugin(), name="duplicate")
+        Toolbox().add_plugin(DuplicatePlugin(), name="duplicate")
 
 
 @pytest.mark.parametrize("name", ["", "not valid", "invalid.dot"])
 def test_plugin_rejects_invalid_plugin_names(name: str) -> None:
     with pytest.raises(ValueError, match="Plugin name must contain"):
-        Tools().add_plugin(SearchPlugin("docs"), name=name)
+        Toolbox().add_plugin(SearchPlugin("docs"), name=name)
 
 
 @pytest.mark.parametrize("name", ["", "not valid", "invalid.dot"])
@@ -141,7 +142,7 @@ def test_plugin_rejects_invalid_local_tool_names(name: str) -> None:
             pass
 
     with pytest.raises(ValueError, match="Plugin tool name must contain"):
-        Tools().add_plugin(InvalidNamePlugin(), name="plugin")
+        Toolbox().add_plugin(InvalidNamePlugin(), name="plugin")
 
 
 def test_plugin_requires_at_least_one_tool() -> None:
@@ -149,9 +150,9 @@ def test_plugin_requires_at_least_one_tool() -> None:
         pass
 
     with pytest.raises(ValueError, match="does not define any tools"):
-        Tools().add_plugin(EmptyPlugin(), name="empty")
+        Toolbox().add_plugin(EmptyPlugin(), name="empty")
     with pytest.raises(TypeError, match="expects an instance"):
-        Tools().add_plugin(EmptyPlugin, name="empty")
+        Toolbox().add_plugin(EmptyPlugin, name="empty")
 
 
 def test_plugin_name_can_only_be_registered_once() -> None:
@@ -160,10 +161,10 @@ def test_plugin_name_can_only_be_registered_once() -> None:
         def other(self) -> None:
             pass
 
-    tools = Tools()
-    tools.add_plugin(SearchPlugin("docs"), name="knowledge")
+    toolbox = Toolbox()
+    toolbox.add_plugin(SearchPlugin("docs"), name="knowledge")
     with pytest.raises(ValueError, match="Plugin 'knowledge' is already registered"):
-        tools.add_plugin(OtherPlugin(), name="knowledge")
+        toolbox.add_plugin(OtherPlugin(), name="knowledge")
 
 
 @pytest.mark.parametrize(
@@ -206,7 +207,7 @@ def test_plugin_tools_must_be_instance_methods(
                 pass
 
     with pytest.raises(TypeError, match="must be an instance method"):
-        Tools().add_plugin(InvalidPlugin(), name="invalid")
+        Toolbox().add_plugin(InvalidPlugin(), name="invalid")
 
 
 def test_plugin_ignores_unmarked_static_and_class_methods() -> None:
@@ -223,7 +224,7 @@ def test_plugin_ignores_unmarked_static_and_class_methods() -> None:
         def visible(self) -> None:
             pass
 
-    registered = Tools().add_plugin(Plugin(), name="helpers")
+    registered = Toolbox().add_plugin(Plugin(), name="helpers")
     assert [item.name for item in registered] == ["helpers_visible"]
 
 
@@ -236,7 +237,7 @@ def test_plugin_rejects_decorated_callable_descriptors() -> None:
         invalid = tool("Invalid")(CallableDescriptor())
 
     with pytest.raises(TypeError, match="must be an instance method"):
-        Tools().add_plugin(InvalidPlugin(), name="invalid")
+        Toolbox().add_plugin(InvalidPlugin(), name="invalid")
 
 
 def test_plugin_inheritance_respects_undecorated_overrides() -> None:
@@ -257,9 +258,9 @@ def test_plugin_inheritance_respects_undecorated_overrides() -> None:
         def third(self) -> None:
             pass
 
-    tools = Tools()
-    tools.add_plugin(DerivedPlugin(), name="derived")
-    assert [item.name for item in tools] == ["derived_second", "derived_third"]
+    toolbox = Toolbox()
+    toolbox.add_plugin(DerivedPlugin(), name="derived")
+    assert [item.name for item in toolbox] == ["derived_second", "derived_third"]
 
 
 def test_plugin_decorator_defensively_copies_metadata() -> None:
@@ -273,9 +274,9 @@ def test_plugin_decorator_defensively_copies_metadata() -> None:
 
     tags.append("write")
     metadata["owner"] = "changed"
-    tools = Tools()
-    tools.add_plugin(MetadataPlugin(), name="metadata")
-    registered = tools.get("metadata_read")
+    toolbox = Toolbox()
+    toolbox.add_plugin(MetadataPlugin(), name="metadata")
+    registered = toolbox.get("metadata_read")
     assert registered is not None
     assert registered.tags == frozenset({"read"})
     assert registered.extra == {"owner": "platform"}

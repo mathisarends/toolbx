@@ -12,7 +12,7 @@ from llmify import (
 )
 from pydantic import BaseModel
 
-from agenttoolkit.tools import Tools, ToolSchemaFormat
+from agenttoolkit.tools import Toolbox, ToolSchemaFormat
 
 
 def _json_default(value: Any) -> Any:
@@ -29,7 +29,7 @@ class Agent:
     def __init__(
         self,
         model: ChatModel,
-        tools: Tools,
+        toolbox: Toolbox,
         *,
         system_prompt: str | Callable[[], str] | None = None,
         on_tool_call: OnToolCall | None = None,
@@ -37,7 +37,7 @@ class Agent:
         confirm: Callable[[str, dict[str, Any]], bool] | None = None,
     ) -> None:
         self._model = model
-        self._tools = tools
+        self._toolbox = toolbox
         self._messages: list[Message] = []
         self._on_tool_call = on_tool_call
         self._on_tool_result = on_tool_result
@@ -65,7 +65,7 @@ class Agent:
 
     async def _loop(self) -> str:
         while True:
-            schema = self._tools.get_schema(ToolSchemaFormat.OPENAI)
+            schema = self._toolbox.get_schema(ToolSchemaFormat.OPENAI)
             messages = (
                 [
                     SystemMessage(content=self._system_prompt()),
@@ -91,7 +91,7 @@ class Agent:
                 if self._on_tool_call:
                     self._on_tool_call(call.function.name, arguments)
 
-                tool = self._tools.get(call.function.name)
+                tool = self._toolbox.get(call.function.name)
                 if (
                     tool is not None
                     and tool.requires_approval
@@ -100,7 +100,7 @@ class Agent:
                 ):
                     result = "Tool failed: Declined by user"
                 else:
-                    result = await self._tools.execute(call.function.name, arguments)
+                    result = await self._toolbox.execute(call.function.name, arguments)
 
                 if self._on_tool_result:
                     self._on_tool_result(call.function.name, result)

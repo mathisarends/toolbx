@@ -1,7 +1,7 @@
 import asyncio
 from dataclasses import dataclass
 
-from agenttoolkit import ToolContext, Tools, provided, requires
+from agenttoolkit import Toolbox, ToolContext, provided, requires
 
 
 @dataclass
@@ -10,18 +10,18 @@ class UserInfo:
     is_admin: bool = False
 
 
-tools = Tools(context=ToolContext(UserInfo(name="Mathis")))
+toolbox = Toolbox(context=ToolContext(UserInfo(name="Mathis")))
 
 
 # Hidden entirely unless a UserInfo dependency is present in the context.
-@tools.tool("Get personalized settings", available_when=provided(UserInfo))
+@toolbox.tool("Get personalized settings", available_when=provided(UserInfo))
 def get_settings() -> str:
     return "settings"
 
 
 # Hidden unless a UserInfo is present AND satisfies the predicate. `~`, `&`
 # and `|` combine ToolAvailability instances, e.g. `requires(...) & provided(...)`.
-@tools.tool(
+@toolbox.tool(
     "Delete a user account (admin only)",
     available_when=requires(UserInfo, predicate=lambda user: user.is_admin),
 )
@@ -30,7 +30,7 @@ def delete_account() -> str:
 
 
 def tool_names(context: ToolContext | None = None) -> list[str]:
-    return [schema.name for schema in tools.get_schema(context=context)]
+    return [schema.name for schema in toolbox.get_schema(context=context)]
 
 
 async def main() -> None:

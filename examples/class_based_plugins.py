@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
 
-from agenttoolkit import AgentToolset, Tools, tool
+from agenttoolkit import AgentToolset, Toolbox, tool
 
 
 @dataclass(frozen=True)
@@ -64,18 +64,18 @@ async def main() -> None:
             Product("p-3", "USB-C Dock"),
         ]
     )
-    tools = Tools(CatalogTools(catalog))
+    toolbox = Toolbox(CatalogTools(catalog))
 
     # The toolset namespace becomes part of each model-facing tool name.
-    print([schema.name for schema in tools.get_schema()])
+    print([schema.name for schema in toolbox.get_schema()])
 
     print(
-        await tools.execute(
+        await toolbox.execute(
             "catalog_search",
             {"query": "keyboard", "limit": 2},
         )
     )
-    print(await tools.execute("catalog_get", {"product_id": "p-3"}))
+    print(await toolbox.execute("catalog_get", {"product_id": "p-3"}))
 
 
 if __name__ == "__main__":

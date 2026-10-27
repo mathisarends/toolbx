@@ -43,5 +43,5 @@ a change that only works on one of those versions isn't done.
 ## Reporting issues
 
 Open a GitHub issue with a minimal reproduction. For bugs, include the
-Python version and the smallest `Tools`/`Tool` setup that reproduces the
+Python version and the smallest `Toolbox`/`Tool` setup that reproduces the
 problem.

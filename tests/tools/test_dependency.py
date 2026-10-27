@@ -3,7 +3,7 @@ from collections.abc import AsyncIterator, Iterator
 
 import pytest
 
-from agenttoolkit import Inject, Tools, provide
+from agenttoolkit import Inject, Toolbox, provide
 from agenttoolkit.dependency import DependencyContainer, DependencyProvider
 
 
@@ -47,9 +47,9 @@ async def test_dependencies_are_singletons_for_the_container_lifetime() -> None:
             connection_calls += 1
             return Connection()
 
-    tools = Tools(dependencies=[Dependencies()])
+    toolbox = Toolbox(dependencies=[Dependencies()])
 
-    @tools.tool("Use dependencies")
+    @toolbox.tool("Use dependencies")
     async def use(
         value: int,
         client: Inject[Client],
@@ -58,9 +58,9 @@ async def test_dependencies_are_singletons_for_the_container_lifetime() -> None:
     ) -> tuple[object, ...]:
         return value, client, first, first is second
 
-    assert set(tools.get_schema()[0].parameters["properties"]) == {"value"}
-    first = await tools.execute("use", {"value": 3})
-    second = await tools.execute("use", {"value": 4})
+    assert set(toolbox.get_schema()[0].parameters["properties"]) == {"value"}
+    first = await toolbox.execute("use", {"value": 3})
+    second = await toolbox.execute("use", {"value": 4})
 
     assert first[0] == 3
     assert first[1] is second[1]
@@ -76,20 +76,20 @@ async def test_plain_singletons_can_resolve_without_a_context_manager() -> None:
         def settings(self) -> Settings:
             return Settings()
 
-    tools = Tools(dependencies=[Dependencies()])
+    toolbox = Toolbox(dependencies=[Dependencies()])
 
-    @tools.tool("Use settings")
+    @toolbox.tool("Use settings")
     def use(settings: Inject[Settings]) -> Settings:
         return settings
 
-    assert await tools.execute("use") is await tools.execute("use")
+    assert await toolbox.execute("use") is await toolbox.execute("use")
 
 
 def test_tools_reject_container_and_dependencies_together() -> None:
     container = DependencyContainer()
 
     with pytest.raises(ValueError, match="either container or dependencies"):
-        Tools(container=container, dependencies=[])
+        Toolbox(container=container, dependencies=[])
 
 
 def test_graph_is_validated_at_construction() -> None:

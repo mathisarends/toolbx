@@ -6,7 +6,7 @@ from agenttoolkit.tools.registry import ToolRegistry
 from agenttoolkit.tools.schema import ToolSchema
 
 
-class Tools(ToolRegistry):
+class Toolbox(ToolRegistry):
     """Tools exposed through provider tool-call schemas."""
 
     @overload

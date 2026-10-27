@@ -18,7 +18,7 @@ from .models import Tool, ToolMetadata, ToolSchemaFormat
 from .plugins import tool
 from .registry import ToolRegistry
 from .schema import ToolSchema, build_schema
-from .tools import Tools
+from .toolbox import Toolbox
 from .toolset import AgentToolset
 
 __all__ = [
@@ -37,7 +37,7 @@ __all__ = [
     "ToolRegistry",
     "ToolSchema",
     "ToolSchemaFormat",
-    "Tools",
+    "Toolbox",
     "build_schema",
     "description_from_context",
     "provide",

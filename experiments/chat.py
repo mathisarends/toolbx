@@ -8,8 +8,8 @@ from agenttoolkit.tools import (
     CallLoggingMiddleware,
     ErrorBoundaryMiddleware,
     Inject,
+    Toolbox,
     ToolContext,
-    Tools,
     description_from_context,
     requires,
 )
@@ -26,13 +26,13 @@ class UserInfo:
 
 context_user = UserInfo(name="Mathis", is_admin=True)
 context = ToolContext(context_user)
-tools = Tools(
+toolbox = Toolbox(
     context=context,
     middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()),
 )
 
 
-@tools.tool("Get the current date and time")
+@toolbox.tool("Get the current date and time")
 def get_current_time() -> str:
     return dt.datetime.now().isoformat()
 
@@ -42,7 +42,7 @@ class AddParams(BaseModel):
     b: float = Field(description="Second addend")
 
 
-@tools.tool(
+@toolbox.tool(
     "Add two numbers together",
     status=lambda params: f"Adding {params.a} + {params.b}",
 )
@@ -52,14 +52,14 @@ def add(params: AddParams) -> float:
 
 # 3. Dependency resolved from the ToolContext via Inject — never exposed to
 #    the LLM as a schema field, only visible to the function body.
-@tools.tool("Get information about the currently logged in user")
+@toolbox.tool("Get information about the currently logged in user")
 def whoami(user: Inject[UserInfo]) -> str:
     return f"{user.name} (admin={user.is_admin})"
 
 
 # 4. Availability gated on a dependency in the ToolContext — the tool is
 #    hidden from the schema entirely unless the predicate holds.
-@tools.tool(
+@toolbox.tool(
     "Reset the demo counter (admin only)",
     available_when=requires(UserInfo, predicate=lambda user: user.is_admin),
 )
@@ -69,7 +69,7 @@ def reset_counter() -> str:
 
 # 5. Description resolved dynamically from the ToolContext, falling back to
 #    a static description when the dependency isn't provided.
-@tools.tool(
+@toolbox.tool(
     description_from_context(
         UserInfo,
         render=lambda user: f"Greet {user.name} by name",
@@ -81,7 +81,7 @@ def greet(user: Inject[UserInfo]) -> str:
 
 
 # 6. Dangerous tool requiring explicit approval before the agent runs it.
-@tools.tool(
+@toolbox.tool(
     "Delete all demo data (dangerous, needs confirmation)", requires_approval=True
 )
 def delete_all_data() -> str:
@@ -90,7 +90,7 @@ def delete_all_data() -> str:
 
 # 7. Tool that can raise; the built-in error boundary returns the error text
 #    to the agent instead of crashing the loop.
-@tools.tool("Divide two numbers; fails on division by zero")
+@toolbox.tool("Divide two numbers; fails on division by zero")
 def divide(a: float, b: float) -> float:
     return a / b
 
@@ -104,7 +104,7 @@ class WeatherResult(BaseModel):
     temp_c: float
 
 
-@tools.tool("Get the current weather for a known city")
+@toolbox.tool("Get the current weather for a known city")
 def get_weather(city: str) -> WeatherResult:
     temp_c = _KNOWN_CITIES.get(city.lower())
     if temp_c is None:
@@ -113,11 +113,11 @@ def get_weather(city: str) -> WeatherResult:
 
 
 async def main() -> None:
-    console = Console(tools, context=context)
+    console = Console(toolbox, context=context)
     model = experiment_model("gpt-5.6-terra", on_retry=console.on_retry)
     agent = Agent(
         model,
-        tools,
+        toolbox,
         system_prompt="You are a helpful assistant.",
         on_tool_call=console.on_tool_call,
         on_tool_result=console.on_tool_result,

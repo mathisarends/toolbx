@@ -8,7 +8,7 @@ from agenttoolkit.tools.plugins import ToolDefinition, get_tool_definition
 
 _NAME = re.compile(r"^[A-Za-z0-9_-]+$")
 _WORD_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
-_NAMESPACE_SUFFIXES = ("Toolset", "Tools", "Plugin")
+_NAMESPACE_SUFFIXES = ("Toolset", "Toolbox", "Tools", "Plugin")
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,7 +72,7 @@ class AgentToolset:
     """Base class for grouping ``@tool`` methods that share constructor state.
 
     The namespace prefixes every exposed tool name. It defaults to the
-    snake_case class name without a ``Toolset``/``Tools``/``Plugin`` suffix;
+    snake_case class name without a ``Toolset``/``Toolbox``/``Tools``/``Plugin`` suffix;
     ``namespace=None`` exposes the tools without a prefix.
     """
 

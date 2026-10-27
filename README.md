@@ -45,21 +45,21 @@ Define a tool, give its schema to the model, and execute the call the model
 makes:
 
 ```python
-from agenttoolkit import Tools, ToolSchemaFormat
+from agenttoolkit import Toolbox, ToolSchemaFormat
 
-tools = Tools()
+toolbox = Toolbox()
 
 
-@tools.tool("Add two integers.")
+@toolbox.tool("Add two integers.")
 def add(a: int, b: int) -> int:
     return a + b
 
 
 # 1. Send the schema to the model.
-schema = tools.get_schema(ToolSchemaFormat.ANTHROPIC)
+schema = toolbox.get_schema(ToolSchemaFormat.ANTHROPIC)
 
 # 2. The model asks to call "add" with {"a": 2, "b": 3}.
-result = await tools.execute("add", {"a": 2, "b": 3})  # 5
+result = await toolbox.execute("add", {"a": 2, "b": 3})  # 5
 
 # 3. Serialize the value and feed it back to the model.
 ```
@@ -69,11 +69,11 @@ add only the pieces an application actually needs.
 
 ## Defining tools
 
-The `@tools.tool(...)` decorator is the entire surface most code touches.
+The `@toolbox.tool(...)` decorator is the entire surface most code touches.
 Parameters and their JSON Schema come from the function signature:
 
 ```python
-@tools.tool("Add two integers.")
+@toolbox.tool("Add two integers.")
 def add(a: int, b: int) -> int:
     return a + b
 ```
@@ -91,14 +91,14 @@ class SearchParams(BaseModel):
     limit: int = Field(default=5, ge=1, le=20)
 
 
-@tools.tool("Search the connected knowledge base.")
+@toolbox.tool("Search the connected knowledge base.")
 async def search(params: SearchParams) -> list[str]:
     return await run_search(params.query, params.limit)
 ```
 
 Tools may be synchronous or asynchronous; both run behind the same async API.
 
-Use `tools.register(tool)` when you already have a `Tool` object and want to
+Use `toolbox.register(tool)` when you already have a `Tool` object and want to
 register it imperatively. Pass `replace=True` to replace a tool with the same
 name.
 
@@ -106,11 +106,11 @@ name.
 
 For larger applications, group related tools in an `AgentToolset` subclass and
 inject stable application services through its constructor. The `@tool`
-decorator marks methods without registering them; `Tools` registers all marked
+decorator marks methods without registering them; `Toolbox` registers all marked
 methods of an instance together:
 
 ```python
-from agenttoolkit import AgentToolset, Tools, tool
+from agenttoolkit import AgentToolset, Toolbox, tool
 
 
 class CatalogTools(AgentToolset):
@@ -130,16 +130,16 @@ class CatalogTools(AgentToolset):
         return " ".join(query.split())
 
 
-tools = Tools(CatalogTools(catalog_service), FilesTools(filesystem))
-tools.add(ShellTools(sandbox), exclude={"kill"})
+toolbox = Toolbox(CatalogTools(catalog_service), FilesTools(filesystem))
+toolbox.add(ShellTools(sandbox), exclude={"kill"})
 ```
 
 The namespace prefixes every exposed method: the example registers
 `catalog_search` and `catalog_get`. It defaults to the snake_case class name
-without a `Tools`, `Toolset` or `Plugin` suffix. Set it with a class keyword
+without a `Tools`, `Toolbox`, `Toolset` or `Plugin` suffix. Set it with a class keyword
 (`class CatalogTools(AgentToolset, namespace="shop")`), or use
 `namespace=None` to expose the local names unprefixed. Pass `namespace=` to
-`tools.add(...)` to register a second instance of the same class.
+`toolbox.add(...)` to register a second instance of the same class.
 `include=` and `exclude=` select tools by their local name; unknown names are
 rejected.
 
@@ -154,7 +154,7 @@ dependency container. Their methods contain only model-facing parameters;
 `Inject[T]` is intentionally rejected there. The application's composition root
 owns the toolset, its dependencies, and their lifecycle. Objects which do not
 inherit from `AgentToolset` can still be registered with
-`tools.add(obj, namespace="name")` or `tools.add_plugin(obj, name="name")`.
+`toolbox.add(obj, namespace="name")` or `toolbox.add_plugin(obj, name="name")`.
 See the runnable [`class_based_plugins.py`](examples/class_based_plugins.py)
 example for the complete setup.
 
@@ -165,7 +165,7 @@ None of it is visible to the model — it never appears in the generated JSON
 Schema:
 
 ```python
-@tools.tool(
+@toolbox.tool(
     "Issue a refund for an order.",
     status=lambda params: (
         f"Refunding {params.amount} for order {params.order_id}..."
@@ -186,11 +186,11 @@ def refund(params: RefundParams) -> str: ...
 - `metadata` — an arbitrary read-only mapping for anything else the host
   application needs, readable as `tool.extra`.
 - `requires_approval` — readable as `tool.requires_approval`; check it
-  before calling `tools.execute(...)` if the call needs user confirmation
+  before calling `toolbox.execute(...)` if the call needs user confirmation
   first. `agenttoolkit` does not enforce approval itself.
 
 ```python
-tool = tools.get("refund")
+tool = toolbox.get("refund")
 tool.tags                # frozenset({"billing", "write"})
 tool.extra["owner"]      # "billing-team"
 tool.requires_approval   # True
@@ -200,15 +200,15 @@ tool.format_status({"order_id": "o-123", "amount": 20.0})
 
 ## Driving an agent loop
 
-`Tools.get_schema(...)` returns the schema for every tool available in the
-active (or a given) context; `Tools.execute(...)` dispatches a model-produced
+`Toolbox.get_schema(...)` returns the schema for every tool available in the
+active (or a given) context; `Toolbox.execute(...)` dispatches a model-produced
 call:
 
 ```python
-openai_schemas = tools.get_schema(ToolSchemaFormat.OPENAI)
-anthropic_schemas = tools.get_schema(ToolSchemaFormat.ANTHROPIC)
+openai_schemas = toolbox.get_schema(ToolSchemaFormat.OPENAI)
+anthropic_schemas = toolbox.get_schema(ToolSchemaFormat.ANTHROPIC)
 
-result = await tools.execute("search", {"query": "tool middleware"}, context=context)
+result = await toolbox.execute("search", {"query": "tool middleware"}, context=context)
 ```
 
 Code that only registers or executes tools, independent of how they are shown
@@ -218,15 +218,15 @@ A typical loop confirms approval-gated tools before executing, and reports
 status while a call is in flight:
 
 ```python
-tool = tools.get(name)
+tool = toolbox.get(name)
 if tool is not None and tool.requires_approval and not confirm(name, arguments):
     result = "Tool failed: Declined by user"
 else:
     print(tool.format_status(arguments) if tool else name)
-    result = await tools.execute(name, arguments, context=context)
+    result = await toolbox.execute(name, arguments, context=context)
 ```
 
-Iterating a `Tools` instance yields the underlying `Tool` objects — every
+Iterating a `Toolbox` instance yields the underlying `Tool` objects — every
 registered one, gated or not. Filter with `tool.is_available(context)` to print
 a catalog of what a given context actually exposes (`tool.name`,
 `tool.resolve_description(context)`, `tool.tags`, ...).
@@ -234,7 +234,7 @@ a catalog of what a given context actually exposes (`tool.name`,
 ## Results and errors
 
 Tool functions return their natural Python value: text, numbers, collections,
-Pydantic models, or `None`. `Tools.execute()` passes that value through
+Pydantic models, or `None`. `Toolbox.execute()` passes that value through
 unchanged:
 
 ```python
@@ -243,7 +243,7 @@ class WeatherResult(BaseModel):
     temp_c: float
 
 
-@tools.tool("Get the current weather for a known city")
+@toolbox.tool("Get the current weather for a known city")
 def get_weather(city: str) -> WeatherResult:
     temp_c = KNOWN_CITIES.get(city.lower())
     if temp_c is None:
@@ -258,7 +258,7 @@ implementations need no toolkit-specific result import. Without that
 middleware, exceptions propagate to the caller normally.
 
 Because dispatch by name is dynamic and one registry can contain heterogeneous
-return types, the static return type of `Tools.execute()` is `object`. The
+return types, the static return type of `Toolbox.execute()` is `object`. The
 application's provider adapter owns serialization and can add any
 provider-specific metadata at that boundary.
 
@@ -269,7 +269,7 @@ A tool that needs a client, a session, or a connection declares it as an
 never appear in the model-facing schema:
 
 ```python
-from agenttoolkit import DependencyProvider, Inject, Tools, provide
+from agenttoolkit import DependencyProvider, Inject, Toolbox, provide
 
 
 class Dependencies(DependencyProvider):
@@ -278,10 +278,10 @@ class Dependencies(DependencyProvider):
         return SearchClient()
 
 
-tools = Tools(dependencies=[Dependencies()])
+toolbox = Toolbox(dependencies=[Dependencies()])
 
 
-@tools.tool("Search the connected knowledge base.")
+@toolbox.tool("Search the connected knowledge base.")
 async def search(query: str, client: Inject[SearchClient]) -> list[str]:
     return await client.search(query)
 ```
@@ -294,7 +294,7 @@ instance is reused by every subsequent tool call.
 Singleton dependencies need no context manager:
 
 ```python
-await tools.execute("search", {"query": "dependency injection"})
+await toolbox.execute("search", {"query": "dependency injection"})
 ```
 
 Factory methods may be synchronous or asynchronous. Generator providers are
@@ -312,11 +312,11 @@ class Dependencies(DependencyProvider):
 
 
 async with Database.connect() as database:
-    tools = Tools(dependencies=[Dependencies(database)])
-    await tools.execute("search", {"query": "dependency injection"})
+    toolbox = Toolbox(dependencies=[Dependencies(database)])
+    await toolbox.execute("search", {"query": "dependency injection"})
 ```
 
-`Tools` never closes injected resources. The composition root that created a
+`Toolbox` never closes injected resources. The composition root that created a
 resource also decides when to close it.
 
 ## Conditional availability and descriptions
@@ -329,7 +329,7 @@ compose with `&`, `|`, and `~`:
 from agenttoolkit import provided, requires
 
 
-@tools.tool(
+@toolbox.tool(
     "Issue a refund (admin only).",
     available_when=provided(BillingClient)
     & requires(UserInfo, predicate=lambda user: user.is_admin),
@@ -351,15 +351,15 @@ description = description_from_context(
 )
 
 
-@tools.tool(description)
+@toolbox.tool(description)
 def balance() -> float: ...
 ```
 
 ## Middleware
 
-`Tools` never installs middleware implicitly. Tool resolution and argument
+`Toolbox` never installs middleware implicitly. Tool resolution and argument
 validation are core execution mechanics performed when the middleware chain
-invokes the call. With `Tools()` alone, execution exceptions propagate
+invokes the call. With `Toolbox()` alone, execution exceptions propagate
 normally.
 
 List every middleware an agent loop should use explicitly. For example, this
@@ -382,7 +382,7 @@ class TimeoutMiddleware(ToolMiddleware):
         return await asyncio.wait_for(next(call), timeout=self._seconds)
 
 
-tools = Tools(
+toolbox = Toolbox(
     middleware=(
         ErrorBoundaryMiddleware(),
         CallLoggingMiddleware(),
@@ -420,14 +420,14 @@ class AgentResponse(BaseModel):
     state_summary: str = Field(description="What the model observed so far")
 
 
-tools = StructuredOutputTools()
+toolbox = StructuredOutputTools()
 
 
-@tools.tool("Search the connected knowledge base.")
+@toolbox.tool("Search the connected knowledge base.")
 async def search(query: str) -> list[str]: ...
 
 
-[SearchTool] = tools.create_models(base_model=AgentResponse)
+[SearchTool] = toolbox.create_models(base_model=AgentResponse)
 
 # Give SearchTool to the LLM as its structured-output model.
 response = SearchTool.model_validate(
@@ -437,13 +437,13 @@ response = SearchTool.model_validate(
         "search": {"query": "tool middleware"},
     }
 )
-await tools.execute("search", response.search.model_dump())
+await toolbox.execute("search", response.search.model_dump())
 ```
 
 `create_models()` returns only tools available in the active context.
 Pass `include_tools=[...]` to limit the choices, or `context=...` to derive
 them for a particular request. `StructuredOutputTools` shares registration,
-availability, middleware, execution, and merging with `Tools`; it differs
+availability, middleware, execution, and merging with `Toolbox`; it differs
 only in how tools are presented to the model.
 
 ## Merging registries
@@ -452,8 +452,8 @@ Combine tools from multiple `ToolRegistry` instances — e.g. when composing a
 registry from several feature modules:
 
 ```python
-tools.merge(other_tools)               # raises on name collisions
-tools.merge(other_tools, replace=True)  # other_tools wins on collisions
+toolbox.merge(other_tools)                # raises on name collisions
+toolbox.merge(other_tools, replace=True)  # other_tools wins on collisions
 ```
 
 ## Putting it together
@@ -470,7 +470,7 @@ from agenttoolkit import (
     DependencyProvider,
     ErrorBoundaryMiddleware,
     Inject,
-    Tools,
+    Toolbox,
     ToolSchemaFormat,
     provide,
 )
@@ -487,7 +487,7 @@ class Dependencies(DependencyProvider):
         return SearchClient()
 
 
-tools = Tools(
+toolbox = Toolbox(
     dependencies=[Dependencies()],
     middleware=(
         ErrorBoundaryMiddleware(),
@@ -496,7 +496,7 @@ tools = Tools(
 )
 
 
-@tools.tool(
+@toolbox.tool(
     "Search the connected knowledge base.",
     status=lambda params: f"Searching for {params.query}...",
 )
@@ -504,8 +504,8 @@ async def search(params: SearchParams, client: Inject[SearchClient]) -> list[str
     return await client.search(params.query, params.limit)
 
 
-schema = tools.get_schema(ToolSchemaFormat.ANTHROPIC)
-result: object = await tools.execute(
+schema = toolbox.get_schema(ToolSchemaFormat.ANTHROPIC)
+result: object = await toolbox.execute(
     "search", {"query": "tool middleware"}
 )
 ```
@@ -666,7 +666,7 @@ from agenttoolkit import (
     SkillRefreshMiddleware,
 )
 
-tools = Tools(
+toolbox = Toolbox(
     context=ToolContext(skills),
     middleware=(
         ErrorBoundaryMiddleware(),
@@ -697,7 +697,7 @@ trusted code.
 
 The complete list of what the toolkit provides:
 
-- Registration through a `@tools.tool` decorator — no hand-written JSON
+- Registration through a `@toolbox.tool` decorator — no hand-written JSON
   Schema, for either plain function signatures or Pydantic models.
 - Runtime metadata (`effects`, `status`, `tags`, custom fields) and an
   `requires_approval` flag, kept out of the model-facing schema but readable

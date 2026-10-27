@@ -17,15 +17,15 @@ class Console:
 
     def __init__(
         self,
-        tools: ToolRegistry,
+        toolbox: ToolRegistry,
         *,
         context: ToolContext | None = None,
     ) -> None:
-        self._tools = tools
+        self._toolbox = toolbox
         self._context = context
 
     def on_tool_call(self, name: str, arguments: dict[str, Any]) -> None:
-        tool: Tool | None = self._tools.get(name)
+        tool: Tool | None = self._toolbox.get(name)
         status = tool.format_status(arguments) if tool else None
         label = f" ({status})" if status else ""
         print(f"  -> {name}({arguments}){label}")
@@ -49,7 +49,7 @@ class Console:
 
     def print_tools(self) -> None:
         print("Registered tools (available in current context):")
-        for tool in self._tools:
+        for tool in self._toolbox:
             if not tool.is_available(self._context):
                 continue
             flags = []

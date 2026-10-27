@@ -9,8 +9,8 @@ from agenttoolkit import (
     ErrorBoundaryMiddleware,
     Inject,
     Tool,
+    Toolbox,
     ToolContext,
-    Tools,
     ToolSchemaFormat,
     description_from_context,
     provided,
@@ -28,15 +28,15 @@ class SearchClient:
 
 
 def test_register_adds_an_existing_tool_imperatively() -> None:
-    tools = Tools()
+    toolbox = Toolbox()
 
     def greet(name: str) -> str:
         return f"Hello, {name}"
 
     tool = Tool(name="greet", description="Greet someone", fn=greet)
 
-    assert tools.register(tool) is tool
-    assert tools.get("greet") is tool
+    assert toolbox.register(tool) is tool
+    assert toolbox.get("greet") is tool
     assert tool.plugin_name is None
     assert tool.local_name is None
 
@@ -44,9 +44,9 @@ def test_register_adds_an_existing_tool_imperatively() -> None:
 @pytest.mark.asyncio
 async def test_tool_infers_model_validates_injects_and_executes() -> None:
     client = SearchClient("found:")
-    tools = Tools(context=ToolContext(client))
+    toolbox = Toolbox(context=ToolContext(client))
 
-    @tools.tool(
+    @toolbox.tool(
         "Search",
         tags=["network"],
         metadata={"owner": "knowledge"},
@@ -57,8 +57,8 @@ async def test_tool_infers_model_validates_injects_and_executes() -> None:
     ) -> str:
         return f"{dependency.prefix}{params.query}:{params.limit}"
 
-    result = await tools.execute("search", {"query": "docs"})
-    tool = tools.get("search")
+    result = await toolbox.execute("search", {"query": "docs"})
+    tool = toolbox.get("search")
 
     assert result == "found:docs:10"
     assert tool is not None
@@ -69,57 +69,57 @@ async def test_tool_infers_model_validates_injects_and_executes() -> None:
 
 @pytest.mark.asyncio
 async def test_plain_signature_is_validated_and_sync_result_is_returned() -> None:
-    tools = Tools(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
+    toolbox = Toolbox(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
 
-    @tools.tool("Add numbers")
+    @toolbox.tool("Add numbers")
     def add(a: int, b: int = 1) -> int:
         return a + b
 
-    assert await tools.execute("add", {"a": "2"}) == 3
+    assert await toolbox.execute("add", {"a": "2"}) == 3
 
-    invalid = await tools.execute("add", {})
+    invalid = await toolbox.execute("add", {})
     assert isinstance(invalid, str)
     assert invalid.startswith("Tool failed: ")
     assert "a" in invalid
 
 
 def test_schema_is_provider_neutral_with_adapters() -> None:
-    tools = Tools()
+    toolbox = Toolbox()
 
-    @tools.tool("Search")
+    @toolbox.tool("Search")
     def search(params: SearchParams) -> None:
         pass
 
-    native = tools.get_schema()[0]
-    openai = tools.get_schema(ToolSchemaFormat.OPENAI)[0]
-    anthropic = tools.get_schema(ToolSchemaFormat.ANTHROPIC)[0]
+    native = toolbox.get_schema()[0]
+    openai = toolbox.get_schema(ToolSchemaFormat.OPENAI)[0]
+    anthropic = toolbox.get_schema(ToolSchemaFormat.ANTHROPIC)[0]
 
     assert native.parameters["properties"]["query"]["description"] == "Search query"
     assert openai["type"] == "function"
     assert openai["function"]["name"] == "search"
     assert anthropic["input_schema"] == native.parameters
-    assert tools.get("search").to_openai_schema() == openai
-    assert tools.get("search").parse_arguments('{"query": "docs"}') == {
+    assert toolbox.get("search").to_openai_schema() == openai
+    assert toolbox.get("search").parse_arguments('{"query": "docs"}') == {
         "query": "docs",
         "limit": 10,
     }
 
 
 def test_annotated_description_is_included_in_callable_schema() -> None:
-    tools = Tools()
+    toolbox = Toolbox()
 
-    @tools.tool("Greet")
+    @toolbox.tool("Greet")
     def greet(name: Annotated[str, "Person to greet"]) -> None:
         pass
 
-    parameters = tools.get_schema()[0].parameters
+    parameters = toolbox.get_schema()[0].parameters
     assert parameters["properties"]["name"]["description"] == "Person to greet"
 
 
 def test_context_controls_availability_and_description() -> None:
-    tools = Tools()
+    toolbox = Toolbox()
 
-    @tools.tool(
+    @toolbox.tool(
         description_from_context(
             SearchClient,
             render=lambda client: f"Search with prefix {client.prefix}",
@@ -130,12 +130,12 @@ def test_context_controls_availability_and_description() -> None:
     def search(query: str) -> None:
         pass
 
-    tool = tools.get("search")
+    tool = toolbox.get("search")
     assert tool is not None
     assert tool.resolve_description() == "Search"
-    assert tools.get_schema() == []
+    assert toolbox.get_schema() == []
 
-    schemas = tools.get_schema(context=ToolContext(SearchClient("kb:")))
+    schemas = toolbox.get_schema(context=ToolContext(SearchClient("kb:")))
     assert schemas[0].description == "Search with prefix kb:"
 
 
@@ -143,14 +143,14 @@ def test_context_controls_availability_and_description() -> None:
 async def test_tool_errors_are_logged_and_returned_by_the_boundary(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    tools = Tools(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
+    toolbox = Toolbox(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
 
-    @tools.tool("Fail internally")
+    @toolbox.tool("Fail internally")
     def internal_failure() -> None:
         raise RuntimeError("secret")
 
     with caplog.at_level(logging.ERROR, logger="agenttoolkit.tools.middleware"):
-        result = await tools.execute("internal_failure")
+        result = await toolbox.execute("internal_failure")
 
     assert "Tool 'internal_failure' failed" in caplog.text
     assert result == "Tool failed: secret"
@@ -158,25 +158,25 @@ async def test_tool_errors_are_logged_and_returned_by_the_boundary(
 
 @pytest.mark.asyncio
 async def test_tools_do_not_install_an_error_boundary_by_default() -> None:
-    tools = Tools()
+    toolbox = Toolbox()
 
-    @tools.tool("Fail internally")
+    @toolbox.tool("Fail internally")
     def internal_failure() -> None:
         raise RuntimeError("secret")
 
     with pytest.raises(RuntimeError, match="secret"):
-        await tools.execute("internal_failure")
+        await toolbox.execute("internal_failure")
 
 
 def test_duplicate_registration_and_status_validation() -> None:
-    tools = Tools()
+    toolbox = Toolbox()
 
-    @tools.tool("First")
+    @toolbox.tool("First")
     def duplicate() -> None:
         pass
 
     with pytest.raises(ValueError, match="already registered"):
 
-        @tools.tool("Second")
+        @toolbox.tool("Second")
         def duplicate() -> None:
             pass

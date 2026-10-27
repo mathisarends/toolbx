@@ -9,11 +9,11 @@ from agenttoolkit import (
     ErrorBoundaryMiddleware,
     Inject,
     Tool,
+    Toolbox,
     ToolCall,
     ToolContext,
     ToolMetadata,
     ToolMiddleware,
-    Tools,
     build_schema,
     provided,
     requires,
@@ -65,15 +65,15 @@ def test_availability_predicates_can_be_composed() -> None:
 
 @pytest.mark.asyncio
 async def test_optional_injected_dependency_uses_function_default() -> None:
-    tools = Tools()
+    toolbox = Toolbox()
 
-    @tools.tool("Identify the configured service")
+    @toolbox.tool("Identify the configured service")
     def identify(service: Inject[Service] = None) -> str:
         return "default" if service is None else service.name
 
-    assert await tools.execute("identify") == "default"
+    assert await toolbox.execute("identify") == "default"
     assert (
-        await tools.execute(
+        await toolbox.execute(
             "identify",
             context=ToolContext(Service("injected")),
         )
@@ -83,13 +83,13 @@ async def test_optional_injected_dependency_uses_function_default() -> None:
 
 @pytest.mark.asyncio
 async def test_missing_required_injection_is_returned_as_failure() -> None:
-    tools = Tools(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
+    toolbox = Toolbox(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
 
-    @tools.tool("Use a required service")
+    @toolbox.tool("Use a required service")
     def identify(service: Inject[Service]) -> str:
         return service.name
 
-    result = await tools.execute("identify")
+    result = await toolbox.execute("identify")
 
     assert result == (
         "Tool failed: Missing injected dependency for parameter 'service' "
@@ -99,18 +99,18 @@ async def test_missing_required_injection_is_returned_as_failure() -> None:
 
 @pytest.mark.asyncio
 async def test_unavailable_and_unknown_tools_report_available_names() -> None:
-    tools = Tools(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
+    toolbox = Toolbox(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
 
-    @tools.tool("Always available")
+    @toolbox.tool("Always available")
     def public() -> None:
         pass
 
-    @tools.tool("Requires a service", available_when=provided(Service))
+    @toolbox.tool("Requires a service", available_when=provided(Service))
     def private() -> None:
         pass
 
-    unavailable = await tools.execute("private")
-    unknown = await tools.execute("missing")
+    unavailable = await toolbox.execute("private")
+    unknown = await toolbox.execute("missing")
 
     assert unavailable == ("Tool failed: Unknown tool 'private'. Available: ['public']")
     assert unknown == "Tool failed: Unknown tool 'missing'. Available: ['public']"
@@ -137,13 +137,13 @@ class RecordingMiddleware(ToolMiddleware):
 @pytest.mark.asyncio
 async def test_custom_middleware_wraps_execution() -> None:
     events: list[str] = []
-    tools = Tools(middleware=[RecordingMiddleware(events)])
+    toolbox = Toolbox(middleware=[RecordingMiddleware(events)])
 
-    @tools.tool("Double a number")
+    @toolbox.tool("Double a number")
     def double(value: int) -> int:
         return value * 2
 
-    result = await tools.execute("double", {"value": "3"})
+    result = await toolbox.execute("double", {"value": "3"})
 
     assert result == 6
     assert events[0] == "before:3"
@@ -152,19 +152,19 @@ async def test_custom_middleware_wraps_execution() -> None:
 
 @pytest.mark.asyncio
 async def test_structured_tool_results_pass_through_unchanged() -> None:
-    tools = Tools()
+    toolbox = Toolbox()
     payload: dict[str, object] = {"value": 6, "citations": ["doc-1"]}
 
-    @tools.tool("Return structured data")
+    @toolbox.tool("Return structured data")
     def structured() -> dict[str, object]:
         return payload
 
-    assert await tools.execute("structured") is payload
+    assert await toolbox.execute("structured") is payload
 
 
 def test_registry_merge_iteration_and_replacement_are_explicit() -> None:
-    first = Tools()
-    second = Tools()
+    first = Toolbox()
+    second = Toolbox()
 
     @first.tool("Old implementation", name="shared")
     def old() -> str:
@@ -184,38 +184,38 @@ def test_registry_merge_iteration_and_replacement_are_explicit() -> None:
 
 
 def test_per_call_context_does_not_replace_the_registry_context() -> None:
-    tools = Tools(context=ToolContext(Service("registry")))
+    toolbox = Toolbox(context=ToolContext(Service("registry")))
 
-    @tools.tool("Requires a service", available_when=provided(Service))
+    @toolbox.tool("Requires a service", available_when=provided(Service))
     def current() -> None:
         pass
 
-    assert [schema.name for schema in tools.get_schema()] == ["current"]
-    assert tools.get_schema(context=ToolContext()) == []
-    assert [schema.name for schema in tools.get_schema()] == ["current"]
+    assert [schema.name for schema in toolbox.get_schema()] == ["current"]
+    assert toolbox.get_schema(context=ToolContext()) == []
+    assert [schema.name for schema in toolbox.get_schema()] == ["current"]
 
     with pytest.raises(ValueError, match="not a valid ToolSchemaFormat"):
-        tools.get_schema("invalid")
+        toolbox.get_schema("invalid")
 
 
 @pytest.mark.asyncio
 async def test_registry_context_can_be_set_after_creation() -> None:
-    tools = Tools()
+    toolbox = Toolbox()
 
-    @tools.tool("Identify the configured service", available_when=provided(Service))
+    @toolbox.tool("Identify the configured service", available_when=provided(Service))
     def identify(service: Inject[Service]) -> str:
         return service.name
 
-    assert tools.get_schema() == []
+    assert toolbox.get_schema() == []
 
-    tools.set_context(ToolContext(Service("updated")))
+    toolbox.set_context(ToolContext(Service("updated")))
 
-    assert [schema.name for schema in tools.get_schema()] == ["identify"]
-    assert await tools.execute("identify") == "updated"
+    assert [schema.name for schema in toolbox.get_schema()] == ["identify"]
+    assert await toolbox.execute("identify") == "updated"
 
-    tools.set_context(None)
+    toolbox.set_context(None)
 
-    assert tools.get_schema() == []
+    assert toolbox.get_schema() == []
 
 
 def test_status_supports_plain_strings_and_callables() -> None:
@@ -249,15 +249,15 @@ def test_status_rejects_empty_tool_name() -> None:
 
 def test_tools_can_declare_approval_requirement() -> None:
     tool = Tool("safe", "Safe action", lambda: None)
-    tools = Tools()
+    toolbox = Toolbox()
 
     assert tool.requires_approval is False
 
-    @tools.tool("Sensitive action", requires_approval=True)
+    @toolbox.tool("Sensitive action", requires_approval=True)
     def sensitive() -> None:
         pass
 
-    assert tools.get("sensitive").requires_approval is True
+    assert toolbox.get("sensitive").requires_approval is True
 
 
 def test_metadata_is_defensively_copied_and_immutable() -> None:
@@ -292,13 +292,13 @@ def test_callable_schema_rejects_variadics_and_requires_input() -> None:
 
 @pytest.mark.asyncio
 async def test_param_model_binding_must_be_unambiguous() -> None:
-    tools = Tools(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
+    toolbox = Toolbox(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
 
-    @tools.tool("Ambiguous", params=StatusParams)
+    @toolbox.tool("Ambiguous", params=StatusParams)
     def ambiguous(first: object, second: object) -> None:
         pass
 
-    result = await tools.execute("ambiguous", {"item": "document"})
+    result = await toolbox.execute("ambiguous", {"item": "document"})
 
     assert isinstance(result, str)
     assert result.startswith("Tool failed: ")

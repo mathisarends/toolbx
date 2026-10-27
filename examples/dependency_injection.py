@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from agenttoolkit import (
     DependencyProvider,
     Inject,
-    Tools,
+    Toolbox,
     provide,
 )
 
@@ -20,11 +20,11 @@ class Dependencies(DependencyProvider):
         return SearchClient(prefix="kb:")
 
 
-tools = Tools(dependencies=[Dependencies()])
+toolbox = Toolbox(dependencies=[Dependencies()])
 
 
 # Dependencies are resolved from the container and omitted from the schema.
-@tools.tool("Search the knowledge base")
+@toolbox.tool("Search the knowledge base")
 def search(
     query: str,
     client: Inject[SearchClient],
@@ -33,8 +33,8 @@ def search(
 
 
 async def main() -> None:
-    print(tools.get_schema()[0].parameters)
-    result = await tools.execute("search", {"query": "agenttoolkit"})
+    print(toolbox.get_schema()[0].parameters)
+    result = await toolbox.execute("search", {"query": "agenttoolkit"})
     print(result)
 
 

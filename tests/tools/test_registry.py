@@ -89,3 +89,12 @@ async def test_unavailable_tool_logs_the_real_reason_at_debug(
     ):
         await toolbox.execute("write")
     assert "registered but currently unavailable" in caplog.text
+
+
+def test_tools_compare_by_identity_not_by_name() -> None:
+    first = Toolbox(FileTools())["read"]
+    second = Toolbox(FileTools())["read"]
+
+    assert first.name == second.name
+    assert first != second
+    assert len({first, second}) == 2

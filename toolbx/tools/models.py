@@ -87,9 +87,3 @@ class Tool:
         else:
             result = await asyncio.to_thread(self.fn, **arguments)
         return await result if inspect.isawaitable(result) else result
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, Tool) and self.name == other.name
-
-    def __hash__(self) -> int:
-        return hash(self.name)

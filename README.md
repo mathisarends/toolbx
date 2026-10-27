@@ -258,6 +258,7 @@ This API deliberately breaks earlier versions:
   `raw_args`; `tool.metadata` replaces `tool.extra` and `ToolMetadata` is
   removed; `OutputBudget.truncate()` replaces `shape()`.
 - Exported schemas no longer contain Pydantic `title` keys.
+- `Tool` objects compare by identity, no longer by name.
 - `ApprovalMiddleware` replaces hand-written approval checks before `execute`.
 - `@tool` accepts `name` only as a keyword and rejects tools without a
   description or docstring.

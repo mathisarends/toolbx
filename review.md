@@ -11,6 +11,3 @@ gelöscht; verbleibende IDs bleiben stabil.
   Quelle reicht, die andere kann darauf verweisen.
 - `pyproject.toml`: Classifiers (inkl. `Typing :: Typed`) und
   `[project.urls]` fehlen.
-- `Tool.__eq__`/`__hash__` vergleichen nur über den Namen. Zwei
-  verschiedene Tools aus zwei Registries gelten damit als gleich. Das ist
-  vertretbar, sollte aber bewusst so entschieden sein.

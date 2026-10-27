@@ -21,6 +21,8 @@ class ToolEntry:
 def require_valid_name(value: str, what: str) -> None:
     if not value or _NAME.fullmatch(value) is None:
         raise ValueError(f"{what} must contain only letters, numbers, '_' or '-'")
+    if len(value) > 64:
+        raise ValueError(f"{what} must contain at most 64 characters")
 
 
 def collect_tool_entries(cls: type) -> tuple[ToolEntry, ...]:

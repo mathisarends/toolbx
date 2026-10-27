@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from toolbox.tools.binding import ToolAvailability, ToolDescription
 from toolbox.tools.context import ToolContext
 from toolbox.tools.schema import ToolSchema, _infer_param_model, _schema_model
+from toolbox.tools.toolset import require_valid_name
 
 
 class ToolSchemaFormat(StrEnum):
@@ -49,6 +50,7 @@ class Tool:
     ) -> None:
         if not name:
             raise ValueError("Tool name cannot be empty")
+        require_valid_name(name, "Tool name")
         self.name = name
         self.description = "" if description is None else description
         self.fn = fn

@@ -52,3 +52,29 @@ def test_merge_leaves_the_destination_unchanged_on_a_late_collision() -> None:
     destination.merge(incoming, replace=True)
     assert [item.name for item in destination] == ["shared", "first", "last"]
     assert destination.get("shared").description == "Collision"
+
+
+@pytest.mark.parametrize("name", ["a" * 65, "not a name!"])
+def test_invalid_local_names_are_rejected_before_registration(name: str) -> None:
+    with pytest.raises(ValueError):
+
+        class Invalid(Toolset):
+            @tool("Invalid", name=name)
+            def action(self) -> None:
+                pass
+
+
+def test_name_limit_applies_to_the_complete_exported_name() -> None:
+    class Names(Toolset, namespace=None):
+        @tool("One-character local name", name="x")
+        def action(self) -> None:
+            pass
+
+    toolbox = Toolbox()
+    toolbox.add(Names(), namespace="n" * 62)
+    assert len(next(iter(toolbox)).name) == 64
+
+    before = list(toolbox)
+    with pytest.raises(ValueError, match="at most 64 characters"):
+        toolbox.add(Names(), namespace="n" * 63)
+    assert list(toolbox) == before

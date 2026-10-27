@@ -39,16 +39,6 @@ oder entfallene Punkte werden gelöscht; verbleibende IDs bleiben stabil.
 
 ## 1. Bugs
 
-### B7 – Namensprüfung berücksichtigt das Längenlimit nicht · mittel · bestätigt
-
-`require_valid_name` (`toolset.py:21`) prüft zwar die erlaubten Zeichen,
-aber keine Länge. Auch `namespace + "_" + local_name` kann über 64 Zeichen
-kommen und scheitert dann erst beim Provider. Das Problem bleibt beim
-kanonischen Toolset-Weg bestehen.
-
-**Fix:** Die gemeinsame Namensprüfung um das Längenlimit ergänzen und auch
-auf den vollständigen exportierten Namen anwenden.
-
 ### B8 – Parameter namens `self`/`cls` verschwinden aus dem Schema · niedrig · bestätigt
 
 `schema.py:85`, `schema.py:127` und `arguments.py:53` überspringen Parameter
@@ -328,7 +318,7 @@ Die neue API für Availability und Description vorher klären (E8).
 B8 · B14 · `name` nur als Keyword (E11)
 
 **Weitere Vereinfachungen und Validierung:**
-B7 · B9 · B10/E3 · B16/B17/R8
+B9 · B10/E3 · B16/B17/R8
 (Signaturprüfung und Argumentzuordnung bei Definition bzw. Registrierung) ·
 E2 (`Toolbox` zusammenführen) · Begriffe vereinheitlichen
 (Abschnitt 4, vor allem plugin → toolset)

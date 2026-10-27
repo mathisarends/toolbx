@@ -2,7 +2,7 @@ import asyncio
 
 from pydantic import BaseModel, Field
 
-from toolbox import Toolbox, ToolSchemaFormat
+from toolbox import Toolbox
 
 toolbox = Toolbox()
 
@@ -20,13 +20,13 @@ def search(params: SearchParams) -> None:
 async def main() -> None:
     # Provider-neutral form: name/description/parameters, usable to hand-roll
     # an adapter for a client not covered by the two below.
-    native = toolbox.get_schema(ToolSchemaFormat.NATIVE)[0]
+    native = toolbox.schemas()[0]
     print("native:", native.model_dump())
 
-    openai = toolbox.get_schema(ToolSchemaFormat.OPENAI)[0]
+    openai = toolbox.to_openai()[0]
     print("openai:", openai)
 
-    anthropic = toolbox.get_schema(ToolSchemaFormat.ANTHROPIC)[0]
+    anthropic = toolbox.to_anthropic()[0]
     print("anthropic:", anthropic)
 
 

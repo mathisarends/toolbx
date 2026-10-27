@@ -67,7 +67,7 @@ async def main() -> None:
     toolbox = Toolbox(CatalogTools(catalog))
 
     # The toolset namespace becomes part of each model-facing tool name.
-    print([schema.name for schema in toolbox.get_schema()])
+    print([schema.name for schema in toolbox.schemas()])
 
     print(
         await toolbox.execute(

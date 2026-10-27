@@ -1,7 +1,7 @@
 import pytest
 from pydantic import BaseModel
 
-from toolbox import ErrorBoundaryMiddleware, Toolbox, ToolSchemaFormat, Toolset, tool
+from toolbox import ErrorBoundaryMiddleware, Toolbox, Toolset, tool
 
 
 def test_exported_schemas_can_be_transformed_without_changing_the_tool() -> None:
@@ -11,15 +11,15 @@ def test_exported_schemas_can_be_transformed_without_changing_the_tool() -> None
             return query
 
     toolbox = Toolbox(Search())
-    native = toolbox.get_schema()[0]
-    openai = toolbox.get_schema(ToolSchemaFormat.OPENAI)[0]
-    anthropic = toolbox.get_schema(ToolSchemaFormat.ANTHROPIC)[0]
+    native = toolbox.schemas()[0]
+    openai = toolbox.to_openai()[0]
+    anthropic = toolbox.to_anthropic()[0]
 
     native.parameters["properties"]["query"]["description"] = "Changed native"
     openai["function"]["parameters"]["properties"].clear()
     anthropic["input_schema"]["properties"]["query"]["type"] = "integer"
 
-    fresh = toolbox.get_schema()[0].parameters
+    fresh = toolbox.schemas()[0].parameters
     assert fresh["properties"]["query"]["type"] == "string"
     assert "description" not in fresh["properties"]["query"]
 

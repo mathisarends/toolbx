@@ -42,7 +42,7 @@ Define a tool, give its schema to the model, and execute the call the model
 makes:
 
 ```python
-from toolbox import Toolbox, ToolSchemaFormat
+from toolbox import Toolbox
 
 toolbox = Toolbox()
 
@@ -53,7 +53,7 @@ def add(a: int, b: int) -> int:
 
 
 # 1. Send the schema to the model.
-schema = toolbox.get_schema(ToolSchemaFormat.ANTHROPIC)
+schema = toolbox.to_anthropic()
 
 # 2. The model asks to call "add" with {"a": 2, "b": 3}.
 result = await toolbox.execute("add", {"a": 2, "b": 3})  # 5
@@ -188,13 +188,13 @@ tool.requires_approval   # True
 
 ## Driving an agent loop
 
-`Toolbox.get_schema(...)` returns the schema for every tool available in the
+`Toolbox.schemas(...)` returns the schema for every tool available in the
 active (or a given) context; `Toolbox.execute(...)` dispatches a model-produced
 call:
 
 ```python
-openai_schemas = toolbox.get_schema(ToolSchemaFormat.OPENAI)
-anthropic_schemas = toolbox.get_schema(ToolSchemaFormat.ANTHROPIC)
+openai_schemas = toolbox.to_openai()
+anthropic_schemas = toolbox.to_anthropic()
 
 result = await toolbox.execute("search", {"query": "tool middleware"}, context=context)
 ```
@@ -409,7 +409,6 @@ from toolbox import (
     ErrorBoundaryMiddleware,
     Inject,
     Toolbox,
-    ToolSchemaFormat,
     provide,
 )
 
@@ -439,7 +438,7 @@ async def search(params: SearchParams, client: Inject[SearchClient]) -> list[str
     return await client.search(params.query, params.limit)
 
 
-schema = toolbox.get_schema(ToolSchemaFormat.ANTHROPIC)
+schema = toolbox.to_anthropic()
 result: object = await toolbox.execute(
     "search", {"query": "tool middleware"}
 )

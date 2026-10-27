@@ -2,7 +2,6 @@ import inspect
 from collections.abc import Callable, Mapping
 from copy import deepcopy
 from dataclasses import dataclass, field
-from enum import StrEnum
 from types import MappingProxyType
 from typing import Any
 
@@ -12,12 +11,6 @@ from toolbox.tools.binding import ToolAvailability, ToolDescription
 from toolbox.tools.context import ToolContext
 from toolbox.tools.schema import ToolSchema, _infer_param_model, _schema_model
 from toolbox.tools.toolset import require_valid_name
-
-
-class ToolSchemaFormat(StrEnum):
-    NATIVE = "native"
-    OPENAI = "openai"
-    ANTHROPIC = "anthropic"
 
 
 @dataclass(frozen=True, slots=True)

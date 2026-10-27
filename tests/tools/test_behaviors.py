@@ -190,12 +190,9 @@ def test_per_call_context_does_not_replace_the_registry_context() -> None:
     def current() -> None:
         pass
 
-    assert [schema.name for schema in toolbox.get_schema()] == ["current"]
-    assert toolbox.get_schema(context=ToolContext()) == []
-    assert [schema.name for schema in toolbox.get_schema()] == ["current"]
-
-    with pytest.raises(ValueError, match="not a valid ToolSchemaFormat"):
-        toolbox.get_schema("invalid")
+    assert [schema.name for schema in toolbox.schemas()] == ["current"]
+    assert toolbox.schemas(context=ToolContext()) == []
+    assert [schema.name for schema in toolbox.schemas()] == ["current"]
 
 
 @pytest.mark.asyncio
@@ -206,16 +203,16 @@ async def test_registry_context_can_be_set_after_creation() -> None:
     def identify(service: Inject[Service]) -> str:
         return service.name
 
-    assert toolbox.get_schema() == []
+    assert toolbox.schemas() == []
 
     toolbox.set_context(ToolContext(Service("updated")))
 
-    assert [schema.name for schema in toolbox.get_schema()] == ["identify"]
+    assert [schema.name for schema in toolbox.schemas()] == ["identify"]
     assert await toolbox.execute("identify") == "updated"
 
     toolbox.set_context(None)
 
-    assert toolbox.get_schema() == []
+    assert toolbox.schemas() == []
 
 
 def test_tool_rejects_empty_name() -> None:

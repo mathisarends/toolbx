@@ -14,7 +14,7 @@ from .middleware import (
     ToolCall,
     ToolMiddleware,
 )
-from .models import Tool, ToolMetadata, ToolSchemaFormat
+from .models import Tool, ToolMetadata
 from .plugins import tool
 from .registry import ToolRegistry
 from .schema import ToolSchema, build_schema
@@ -35,7 +35,6 @@ __all__ = [
     "ToolMiddleware",
     "ToolRegistry",
     "ToolSchema",
-    "ToolSchemaFormat",
     "Toolbox",
     "Toolset",
     "build_schema",

@@ -54,7 +54,7 @@ async def test_plugin_registers_bound_methods_with_names_and_metadata() -> None:
         "knowledge_search",
         "knowledge_fetch",
     ]
-    assert [schema.name for schema in toolbox.get_schema()] == [
+    assert [schema.name for schema in toolbox.schemas()] == [
         "knowledge_search",
         "knowledge_fetch",
     ]

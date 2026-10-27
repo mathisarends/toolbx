@@ -27,7 +27,7 @@ async def test_toolset_uses_default_namespace_and_constructor_dependencies() -> 
 
     toolbox.add(CatalogTools(CatalogService("docs")))
 
-    assert [schema.name for schema in toolbox.get_schema()] == [
+    assert [schema.name for schema in toolbox.schemas()] == [
         "catalog_search",
         "catalog_get",
     ]

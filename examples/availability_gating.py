@@ -29,7 +29,7 @@ def delete_account() -> str:
 
 
 def tool_names(context: ToolContext | None = None) -> list[str]:
-    return [schema.name for schema in toolbox.get_schema(context=context)]
+    return [schema.name for schema in toolbox.schemas(context=context)]
 
 
 async def main() -> None:

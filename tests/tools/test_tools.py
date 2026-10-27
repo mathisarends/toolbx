@@ -11,7 +11,6 @@ from toolbox import (
     Tool,
     Toolbox,
     ToolContext,
-    ToolSchemaFormat,
     description_from_context,
     provided,
 )
@@ -90,9 +89,9 @@ def test_schema_is_provider_neutral_with_adapters() -> None:
     def search(params: SearchParams) -> None:
         pass
 
-    native = toolbox.get_schema()[0]
-    openai = toolbox.get_schema(ToolSchemaFormat.OPENAI)[0]
-    anthropic = toolbox.get_schema(ToolSchemaFormat.ANTHROPIC)[0]
+    native = toolbox.schemas()[0]
+    openai = toolbox.to_openai()[0]
+    anthropic = toolbox.to_anthropic()[0]
 
     assert native.parameters["properties"]["query"]["description"] == "Search query"
     assert openai["type"] == "function"
@@ -108,7 +107,7 @@ def test_annotated_description_is_included_in_callable_schema() -> None:
     def greet(name: Annotated[str, "Person to greet"]) -> None:
         pass
 
-    parameters = toolbox.get_schema()[0].parameters
+    parameters = toolbox.schemas()[0].parameters
     assert parameters["properties"]["name"]["description"] == "Person to greet"
 
 
@@ -129,9 +128,9 @@ def test_context_controls_availability_and_description() -> None:
     tool = toolbox.get("search")
     assert tool is not None
     assert tool.resolve_description() == "Search"
-    assert toolbox.get_schema() == []
+    assert toolbox.schemas() == []
 
-    schemas = toolbox.get_schema(context=ToolContext(SearchClient("kb:")))
+    schemas = toolbox.schemas(context=ToolContext(SearchClient("kb:")))
     assert schemas[0].description == "Search with prefix kb:"
 
 

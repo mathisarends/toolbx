@@ -27,28 +27,12 @@ nachgestellt. Die Ausgabe steht jeweils dabei.
 - Dynamische Verfügbarkeit bleibt erhalten: Tools sollen sich ein- und
   ausschalten lassen. Die konkrete API sowie die weitere Unterstützung
   dynamischer Beschreibungen sind noch offen (E8).
-- `ToolRegistry` geht in `Toolbox` auf. Schema-Export erfolgt über `schemas()`,
-  `to_openai()` und `to_anthropic()` (E2/E3).
+- `ToolRegistry` geht in `Toolbox` auf (E2).
 - `execute` soll Mappings und JSON-Strings sowie eine optionale Call-ID
   annehmen. Parallele Tool-Calls werden über `execute_many` unterstützt (E4).
 
 Die Zielrichtung ist beschlossen, die Umsetzung steht noch aus. Erledigte
 oder entfallene Punkte werden gelöscht; verbleibende IDs bleiben stabil.
-
----
-
-## 1. Bugs
-
-### B10 – Falsche Overloads bei `get_schema` · mittel
-
-`toolbox.py:12-18`: Der erste Overload nimmt **jeden** `ToolSchemaFormat` an und
-verspricht `list[ToolSchema]`. `get_schema(ToolSchemaFormat.OPENAI)` liefert
-aber Dicts. Der Typechecker meldet dann bei korrektem Code Fehler und
-übersieht falschen Code. Außerdem wird `"OpenAI"` mit `ValueError` abgelehnt,
-weil Groß- und Kleinschreibung zählt.
-
-**Fix:** Overloads mit `Literal[ToolSchemaFormat.OPENAI, "openai"]` usw.
-schreiben, oder besser getrennte Methoden anbieten (siehe E3).
 
 ---
 
@@ -117,20 +101,6 @@ Seit `StructuredOutputTools` entfernt ist, gibt es keinen zweiten Nutzer der
 Basisklasse mehr. Die Aufteilung ist nur noch Ballast. Der Docstring
 „Shared registration … for tool representations“ ist ein Überbleibsel.
 Vorschlag: zu einer Klasse `Toolbox` zusammenführen.
-
-### E3 – Schema-Export
-
-`toolbox.get_schema(ToolSchemaFormat.ANTHROPIC)` ist lang, liefert eine Liste
-unter einem Namen im Singular und hat die Typing-Probleme aus B10. Besser:
-
-```python
-toolbox.schemas()               # list[ToolSchema]
-toolbox.to_openai()             # list[dict]
-toolbox.to_anthropic()
-```
-
-Optional dazu Filter: `toolbox.schemas(tags={"read"})`, `include=`, `exclude=`.
-Tags gibt es bereits, aber keine API wertet sie aus.
 
 ### E4 – `execute` passt nicht zu dem, was Provider liefern
 
@@ -226,7 +196,6 @@ Felder `required`, optionale Felder als nullable).
 | Argumente | `ToolCall.raw_args`, `execute(arguments=)` | überall `arguments` |
 | Zusatzdaten | Decorator `metadata=`, Attribut `tool.extra`, Klasse `ToolMetadata` (enthält tags/extra) | Decorator `extra=` **oder** Attribut `tool.metadata`, aber nicht beides |
 | Kürzen | `OutputBudget.shape()` | `apply()` / `truncate()` / `__call__` |
-| Format-Enum | `ToolSchemaFormat.NATIVE` | wird mit E3 überflüssig |
 
 Weitere Kleinigkeiten:
 
@@ -267,7 +236,7 @@ Die neue API für Availability und Description vorher klären (E8).
 `name` nur als Keyword (E11)
 
 **Weitere Vereinfachungen und Validierung:**
-B10/E3 · R8
+R8
 (Signaturprüfung und Argumentzuordnung bei Definition bzw. Registrierung) ·
 E2 (`Toolbox` zusammenführen) · Begriffe vereinheitlichen
 (Abschnitt 4, vor allem plugin → toolset)

@@ -33,7 +33,7 @@ def search(
 
 
 async def main() -> None:
-    print(toolbox.get_schema()[0].parameters)
+    print(toolbox.schemas()[0].parameters)
     result = await toolbox.execute("search", {"query": "toolbox"})
     print(result)
 

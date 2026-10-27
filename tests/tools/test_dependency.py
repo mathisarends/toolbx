@@ -58,7 +58,7 @@ async def test_dependencies_are_singletons_for_the_container_lifetime() -> None:
     ) -> tuple[object, ...]:
         return value, client, first, first is second
 
-    assert set(toolbox.get_schema()[0].parameters["properties"]) == {"value"}
+    assert set(toolbox.schemas()[0].parameters["properties"]) == {"value"}
     first = await toolbox.execute("use", {"value": 3})
     second = await toolbox.execute("use", {"value": 4})
 

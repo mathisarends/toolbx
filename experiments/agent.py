@@ -12,7 +12,7 @@ from llmify import (
 )
 from pydantic import BaseModel
 
-from toolbox.tools import Toolbox, ToolSchemaFormat
+from toolbox.tools import Toolbox
 
 
 def _json_default(value: Any) -> Any:
@@ -65,7 +65,7 @@ class Agent:
 
     async def _loop(self) -> str:
         while True:
-            schema = self._toolbox.get_schema(ToolSchemaFormat.OPENAI)
+            schema = self._toolbox.to_openai()
             messages = (
                 [
                     SystemMessage(content=self._system_prompt()),

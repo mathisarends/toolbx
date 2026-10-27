@@ -8,7 +8,7 @@ from typing import Any
 
 from toolbx.tools.arguments import resolve_arguments
 from toolbx.tools.middleware import ToolCall, ToolMiddleware, ToolRequest, compose
-from toolbx.tools.models import Tool, ToolMetadata
+from toolbx.tools.models import Tool
 from toolbx.tools.schema import ToolSchema
 from toolbx.tools.toolset import (
     ToolEntry,
@@ -100,11 +100,9 @@ class Toolbox:
                     name=exposed_name,
                     description=definition.description,
                     fn=method,
-                    param_model=definition.params,
-                    metadata=ToolMetadata(
-                        tags=frozenset(definition.tags),
-                        extra=definition.metadata,
-                    ),
+                    params_model=definition.params,
+                    tags=definition.tags,
+                    metadata=definition.metadata,
                     requires_approval=definition.requires_approval,
                     available_when=definition.available_when,
                     namespace=namespace,
@@ -130,7 +128,7 @@ class Toolbox:
     ) -> object:
         call = ToolCall(
             name=name,
-            raw_args=_parse_arguments(arguments),
+            arguments=_parse_arguments(arguments),
             tool=self._tools.get(name),
             call_id=call_id,
         )
@@ -183,7 +181,7 @@ class Toolbox:
             ]
             raise LookupError(f"Unknown tool '{call.name}'. Available: {available}")
 
-        params = tool.input_model.model_validate(call.raw_args)
+        params = tool._input_model.model_validate(call.arguments)
         arguments = resolve_arguments(tool, params)
         return await tool._invoke(arguments)
 

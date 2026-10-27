@@ -17,11 +17,11 @@ def test_exported_schemas_can_be_transformed_without_changing_the_tool() -> None
     openai = toolbox.to_openai()[0]
     anthropic = toolbox.to_anthropic()[0]
 
-    native.parameters["properties"]["query"]["description"] = "Changed native"
+    native.input_schema["properties"]["query"]["description"] = "Changed native"
     openai["function"]["parameters"]["properties"].clear()
     anthropic["input_schema"]["properties"]["query"]["type"] = "integer"
 
-    fresh = toolbox.schemas()[0].parameters
+    fresh = toolbox.schemas()[0].input_schema
     assert fresh["properties"]["query"]["type"] == "string"
     assert "description" not in fresh["properties"]["query"]
 
@@ -177,9 +177,9 @@ async def test_model_parameters_stay_nested_unless_params_is_explicit() -> None:
 
     toolbox = Toolbox(Users())
     nested, extended, flat = toolbox.schemas()
-    assert set(nested.parameters["properties"]) == {"user"}
-    assert set(extended.parameters["properties"]) == {"user", "active"}
-    assert set(flat.parameters["properties"]) == {"name"}
+    assert set(nested.input_schema["properties"]) == {"user"}
+    assert set(extended.input_schema["properties"]) == {"user", "active"}
+    assert set(flat.input_schema["properties"]) == {"name"}
     assert await toolbox.execute("create", {"user": {"name": "Ada"}}) == "Ada"
     assert await toolbox.execute("create_flat", {"name": "Ada"}) == "Ada"
 
@@ -226,7 +226,7 @@ async def test_unknown_arguments_are_rejected_in_both_definition_styles() -> Non
         assert await toolbox.execute(name, {"value": "7"}) == 7
         with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
             await toolbox.execute(name, {"value": 7, "hallucinated": True})
-        assert toolbox.get(name).parameters["additionalProperties"] is False
+        assert toolbox.get(name).input_schema["additionalProperties"] is False
     assert Params.model_config["extra"] == "ignore"
 
 

@@ -7,7 +7,7 @@ from .middleware import (
     ToolMiddleware,
     ToolRequest,
 )
-from .models import Tool, ToolMetadata
+from .models import Tool
 from .schema import ToolSchema, build_schema
 from .toolbox import Toolbox
 from .toolset import Toolset
@@ -18,7 +18,6 @@ __all__ = [
     "Tool",
     "ToolCall",
     "ToolHandler",
-    "ToolMetadata",
     "ToolMiddleware",
     "ToolRequest",
     "ToolSchema",

@@ -23,7 +23,7 @@ class OutputBudget:
             if getattr(self, name) <= 0:
                 raise ValueError(f"{name} must be positive")
 
-    def shape(self, text: str, *, hint: str | None = None) -> str:
+    def truncate(self, text: str, *, hint: str | None = None) -> str:
         if not text:
             return text
 

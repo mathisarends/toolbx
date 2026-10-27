@@ -1,8 +1,7 @@
 import asyncio
 import inspect
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Collection, Mapping
 from copy import deepcopy
-from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any
 
@@ -12,18 +11,6 @@ from toolbx.tools.schema import ToolSchema, _params_parameter, _schema_model
 from toolbx.tools.toolset import require_valid_name
 
 
-@dataclass(frozen=True, slots=True)
-class ToolMetadata:
-    """Runtime hints which do not belong in an LLM function schema."""
-
-    tags: frozenset[str] = field(default_factory=frozenset)
-    extra: Mapping[str, Any] = field(default_factory=dict)
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "tags", frozenset(self.tags))
-        object.__setattr__(self, "extra", MappingProxyType(dict(self.extra)))
-
-
 class Tool:
     def __init__(
         self,
@@ -31,8 +18,9 @@ class Tool:
         description: str | None,
         fn: Callable[..., object],
         *,
-        param_model: type[BaseModel] | None = None,
-        metadata: ToolMetadata | None = None,
+        params_model: type[BaseModel] | None = None,
+        tags: Collection[str] = (),
+        metadata: Mapping[str, Any] | None = None,
         requires_approval: bool = False,
         available_when: Callable[[Any], bool] | None = None,
         namespace: str | None = None,
@@ -44,23 +32,16 @@ class Tool:
         self.name = name
         self.description = "" if description is None else description
         self.fn = fn
-        self.param_model = param_model
-        self._params_parameter = _params_parameter(fn, param_model)
-        self._metadata = metadata or ToolMetadata()
+        self.params_model = params_model
+        self._params_parameter = _params_parameter(fn, params_model)
+        self.tags = frozenset(tags)
+        self.metadata: Mapping[str, Any] = MappingProxyType(dict(metadata or {}))
         self.requires_approval = requires_approval
         self.available_when = available_when
         self.namespace = namespace
         self.local_name = local_name
-        self.input_model = _schema_model(fn, param_model=self.param_model)
-        self.parameters = self.input_model.model_json_schema(mode="validation")
-
-    @property
-    def tags(self) -> frozenset[str]:
-        return self._metadata.tags
-
-    @property
-    def extra(self) -> Mapping[str, Any]:
-        return self._metadata.extra
+        self._input_model = _schema_model(fn, params_model=params_model)
+        self.input_schema = self._input_model.model_json_schema(mode="validation")
 
     def is_available(self) -> bool:
         return (
@@ -73,7 +54,7 @@ class Tool:
         return ToolSchema(
             name=self.name,
             description=self.description,
-            parameters=deepcopy(self.parameters),
+            input_schema=deepcopy(self.input_schema),
         )
 
     def to_openai_schema(

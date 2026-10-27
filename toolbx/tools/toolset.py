@@ -66,7 +66,7 @@ def collect_tool_entries(cls: type) -> tuple[ToolEntry, ...]:
             for parameter in inspect.signature(method).parameters.values()
         ):
             raise TypeError(f"Tool '{attribute_name}' cannot use variadic parameters")
-        build_schema(method, param_model=definition.params)
+        build_schema(method, params_model=definition.params)
         _params_parameter(method, definition.params)
         entries.append(ToolEntry(attribute_name, local_name, definition))
     return tuple(entries)

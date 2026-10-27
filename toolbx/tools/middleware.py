@@ -21,7 +21,7 @@ class ToolRequest:
 @dataclass(frozen=True, slots=True)
 class ToolCall:
     name: str
-    raw_args: dict[str, Any]
+    arguments: dict[str, Any]
     tool: Tool | None = None
     call_id: str | None = None
 
@@ -59,7 +59,7 @@ class CallLoggingMiddleware(ToolMiddleware):
         call_next: ToolHandler,
     ) -> object:
         logger.info("[tool] %s called", call.name)
-        logger.debug("[tool] %s arguments: %r", call.name, call.raw_args)
+        logger.debug("[tool] %s arguments: %r", call.name, call.arguments)
         started = time.perf_counter()
         try:
             return await call_next(call)

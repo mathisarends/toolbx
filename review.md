@@ -62,16 +62,6 @@ Felder `required`, optionale Felder als nullable).
 
 ## 2. Sprache und Benennung
 
-| Konzept | Aktuelle Namen | Vorschlag |
-|---|---|---|
-| Params-Model | Decorator `params=`, `Tool(param_model=)`, `tool.input_model`, `build_schema(param_model=)` | einheitlich `params_model` bzw. `params=` |
-| JSON-Schema | `tool.parameters`, `ToolSchema.parameters`, Anthropic `input_schema` | `tool.input_schema` (passt zu Anthropic/MCP) |
-| Argumente | `ToolCall.raw_args`, `execute(arguments=)` | überall `arguments` |
-| Zusatzdaten | Decorator `metadata=`, Attribut `tool.extra`, Klasse `ToolMetadata` (enthält tags/extra) | Decorator `extra=` **oder** Attribut `tool.metadata`, aber nicht beides |
-| Kürzen | `OutputBudget.shape()` | `apply()` / `truncate()` / `__call__` |
-
-Weitere Kleinigkeiten:
-
 - `Toolbox.execute` meldet bei einem Tool, das es gibt, das aber nicht
   verfügbar ist, „Unknown tool“. Für das LLM ist das in Ordnung, beim Debuggen
   irritiert es. Ein Log-Eintrag auf DEBUG-Level mit dem echten Grund würde

@@ -52,10 +52,10 @@ def test_schema_is_provider_neutral_with_adapters() -> None:
     native = toolbox.schemas()[0]
     openai = toolbox.to_openai()[0]
     anthropic = toolbox.to_anthropic()[0]
-    assert native.parameters["properties"]["query"]["description"] == "Search query"
+    assert native.input_schema["properties"]["query"]["description"] == "Search query"
     assert openai["type"] == "function"
     assert openai["function"]["name"] == "search"
-    assert anthropic["input_schema"] == native.parameters
+    assert anthropic["input_schema"] == native.input_schema
     assert toolbox.get("search").to_openai_schema() == openai
 
 
@@ -68,7 +68,7 @@ def test_annotated_description_is_included_in_callable_schema() -> None:
             pass
 
     toolbox.add(DefinedTools3())
-    parameters = toolbox.schemas()[0].parameters
+    parameters = toolbox.schemas()[0].input_schema
     assert parameters["properties"]["name"]["description"] == "Person to greet"
 
 

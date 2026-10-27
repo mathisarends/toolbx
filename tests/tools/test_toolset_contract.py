@@ -101,10 +101,10 @@ def test_decorator_metadata_is_copied_and_registered_with_the_bound_method() -> 
     assert registered.namespace == "metadata"
     assert registered.local_name == "read"
     assert registered.tags == frozenset({"read"})
-    assert registered.extra == {"owner": "platform"}
+    assert registered.metadata == {"owner": "platform"}
     assert registered.requires_approval
     with pytest.raises(TypeError):
-        registered.extra["owner"] = "changed"
+        registered.metadata["owner"] = "changed"
 
 
 def test_callable_objects_cannot_replace_decorated_methods() -> None:

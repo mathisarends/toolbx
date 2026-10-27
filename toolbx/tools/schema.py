@@ -8,28 +8,32 @@ from pydantic import BaseModel, ConfigDict, create_model
 class ToolSchema(BaseModel):
     name: str
     description: str
-    parameters: dict[str, Any]
+    input_schema: dict[str, Any]
 
     def to_openai_schema(self) -> dict[str, Any]:
         return {
             "type": "function",
-            "function": self.model_dump(mode="json"),
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.input_schema,
+            },
         }
 
     def to_anthropic_schema(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "description": self.description,
-            "input_schema": self.parameters,
+            "input_schema": self.input_schema,
         }
 
 
 def build_schema(
     func: Callable | None = None,
     *,
-    param_model: type[BaseModel] | None = None,
+    params_model: type[BaseModel] | None = None,
 ) -> dict[str, Any]:
-    return _schema_model(func, param_model=param_model).model_json_schema(
+    return _schema_model(func, params_model=params_model).model_json_schema(
         mode="validation"
     )
 
@@ -37,30 +41,30 @@ def build_schema(
 def _schema_model(
     func: Callable | None,
     *,
-    param_model: type[BaseModel] | None,
+    params_model: type[BaseModel] | None,
 ) -> type[BaseModel]:
-    if param_model is not None:
+    if params_model is not None:
         return create_model(
-            param_model.__name__,
-            __base__=param_model,
+            params_model.__name__,
+            __base__=params_model,
             __config__=ConfigDict(extra="forbid"),
-            __module__=param_model.__module__,
+            __module__=params_model.__module__,
         )
     if func is None:
-        raise ValueError("A callable or param_model is required")
+        raise ValueError("A callable or params_model is required")
     return _model_from_callable(func)
 
 
 def _params_parameter(
-    func: Callable, param_model: type[BaseModel] | None
+    func: Callable, params_model: type[BaseModel] | None
 ) -> str | None:
-    if param_model is None:
+    if params_model is None:
         return None
     parameters = inspect.signature(func).parameters
     get_type_hints(func, include_extras=True)
     if len(parameters) != 1:
         raise ValueError(
-            f"Tool '{func.__name__}' uses params model '{param_model.__name__}' "
+            f"Tool '{func.__name__}' uses params model '{params_model.__name__}' "
             "but has no unambiguous single parameter that can receive it"
         )
     name, parameter = next(iter(parameters.items()))

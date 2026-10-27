@@ -22,7 +22,7 @@ async def test_execute_accepts_json_and_preserves_the_call_id_in_middleware() ->
     seen = []
 
     async def record(call, call_next):
-        seen.append((call.call_id, call.raw_args))
+        seen.append((call.call_id, call.arguments))
         return await call_next(call)
 
     toolbox = Toolbox(Calls(), middleware=[record])

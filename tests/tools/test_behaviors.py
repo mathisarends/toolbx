@@ -8,7 +8,6 @@ from toolbx import (
     Tool,
     Toolbox,
     ToolCall,
-    ToolMetadata,
     ToolMiddleware,
     Toolset,
     build_schema,
@@ -38,7 +37,7 @@ class RecordingMiddleware(ToolMiddleware):
     async def __call__(
         self, call: ToolCall, call_next: Callable[[ToolCall], Awaitable[object]]
     ) -> object:
-        self.events.append(f"before:{call.raw_args.get('value')}")
+        self.events.append(f"before:{call.arguments.get('value')}")
         result = await call_next(call)
         self.events.append(f"after:{result}")
         return result
@@ -120,14 +119,14 @@ def test_tools_can_declare_approval_requirement() -> None:
 
 def test_metadata_is_defensively_copied_and_immutable() -> None:
     tags = {"read"}
-    extra: dict[str, Any] = {"owner": "platform"}
-    metadata = ToolMetadata(tags=tags, extra=extra)
+    metadata: dict[str, Any] = {"owner": "platform"}
+    registered = Tool("read", "Read", lambda: None, tags=tags, metadata=metadata)
     tags.add("write")
-    extra["owner"] = "changed"
-    assert metadata.tags == frozenset({"read"})
-    assert metadata.extra == {"owner": "platform"}
+    metadata["owner"] = "changed"
+    assert registered.tags == frozenset({"read"})
+    assert registered.metadata == {"owner": "platform"}
     with pytest.raises(TypeError):
-        metadata.extra["owner"] = "changed"
+        registered.metadata["owner"] = "changed"
 
 
 def test_callable_schema_rejects_variadics_and_requires_input() -> None:
@@ -137,7 +136,7 @@ def test_callable_schema_rejects_variadics_and_requires_input() -> None:
 
     with pytest.raises(TypeError, match="cannot use variadic parameters"):
         build_schema(variadic)
-    with pytest.raises(ValueError, match="callable or param_model"):
+    with pytest.raises(ValueError, match="callable or params_model"):
         build_schema()
 
     def variadic_model(params: ItemParams, *values: str) -> None:
@@ -147,7 +146,7 @@ def test_callable_schema_rejects_variadics_and_requires_input() -> None:
         Tool("variadic_model", "Variadic model", variadic_model)
 
 
-def test_param_model_binding_must_be_unambiguous_at_class_definition() -> None:
+def test_params_model_binding_must_be_unambiguous_at_class_definition() -> None:
     with pytest.raises(ValueError, match="unambiguous"):
 
         class Invalid(Toolset):

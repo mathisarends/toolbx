@@ -172,9 +172,9 @@ toolbox = Toolbox(CalculatorTools(), middleware=[trace, CallLoggingMiddleware()]
 Call logging emits tool names and durations at INFO; raw arguments require DEBUG.
 
 Middleware runs in declaration order around validation and execution. `ToolCall`
-contains the name, parsed `raw_args`, optional `call_id` and registered tool.
+contains the name, parsed `arguments`, optional `call_id` and registered tool.
 JSON decoding happens before middleware dispatch. Use
-`dataclasses.replace(call, raw_args=...)` when forwarding changed arguments.
+`dataclasses.replace(call, arguments=...)` when forwarding changed arguments.
 
 `@tool` supports `name`, `tags`, `metadata` and `requires_approval`. These runtime
 hints are available through `toolbox.get(name)` and iteration. Approval remains
@@ -199,6 +199,11 @@ This API deliberately breaks earlier versions:
   `to_anthropic`.
 - `Tool.namespace` replaces `Tool.plugin_name`. Raw invocation helpers on
   `Tool` are internal; use `Toolbox.execute` for dispatched calls.
+- Names are unified: `Tool(params_model=)`, `build_schema(params_model=)` and
+  `tool.params_model` replace `param_model`; `tool.input_schema` and
+  `ToolSchema.input_schema` replace `parameters`; `ToolCall.arguments` replaces
+  `raw_args`; `tool.metadata` replaces `tool.extra` and `ToolMetadata` is
+  removed; `OutputBudget.truncate()` replaces `shape()`.
 
 ## Examples and development
 

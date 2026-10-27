@@ -39,18 +39,6 @@ oder entfallene Punkte werden gelöscht; verbleibende IDs bleiben stabil.
 
 ## 1. Bugs
 
-### B6 – `merge()` ist nicht atomar · mittel · bestätigt
-
-`merge` registriert die Tools einzeln (`registry.py:201-203`). Bei einer
-Kollision mitten in der Schleife bleibt die Registry halb gemerged:
-
-```
-merge raised "Tool 'x' already registered"; a2 now: ['x', 'y']
-```
-
-Das widerspricht dem Versprechen aus dem README: „Registration is atomic“.
-Kollisionen sollten vorab gesammelt werden, so wie `add()` es schon macht.
-
 ### B7 – Namensprüfung berücksichtigt das Längenlimit nicht · mittel · bestätigt
 
 `require_valid_name` (`toolset.py:21`) prüft zwar die erlaubten Zeichen,
@@ -337,7 +325,7 @@ auf die explizite Übergabe von Dependencies im Toolset-Konstruktor umstellen.
 Die neue API für Availability und Description vorher klären (E8).
 
 **Kleine, unabhängige Korrekturen:**
-B6 · B8 · B14 · `name` nur als Keyword (E11)
+B8 · B14 · `name` nur als Keyword (E11)
 
 **Weitere Vereinfachungen und Validierung:**
 B7 · B9 · B10/E3 · B16/B17/R8

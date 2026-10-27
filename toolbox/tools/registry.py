@@ -196,8 +196,15 @@ class ToolRegistry:
         return await self._handler(call)
 
     def merge(self, other: ToolRegistry, *, replace: bool = False) -> None:
-        for tool in other:
-            self.register(tool, replace=replace)
+        pending = {tool.name: tool for tool in other}
+        collisions = self._tools.keys() & pending.keys()
+        if collisions and not replace:
+            raise ValueError(
+                "; ".join(
+                    f"Tool '{name}' already registered" for name in sorted(collisions)
+                )
+            )
+        self._tools.update(pending)
 
     def __iter__(self) -> Iterator[Tool]:
         return iter(self._tools.values())

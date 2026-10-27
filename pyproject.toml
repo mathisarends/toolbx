@@ -9,6 +9,27 @@ requires-python = ">=3.13"
 dependencies = [
     "pydantic>=2.13.4",
 ]
+keywords = ["llm", "agents", "tool-calling", "function-calling", "pydantic"]
+# No License classifier: PEP 639 forbids it next to a license expression.
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Framework :: Pydantic :: 2",
+    "Framework :: AsyncIO",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/mathisarends/agenttoolkit"
+Repository = "https://github.com/mathisarends/agenttoolkit"
+Issues = "https://github.com/mathisarends/agenttoolkit/issues"
 
 [dependency-groups]
 dev = [

@@ -25,12 +25,6 @@ Die größten Baustellen:
 3. **Begriffe sind uneinheitlich.** plugin/toolset/namespace,
    params/param_model/input_model/parameters/raw_args/arguments/args,
    metadata/extra und vier Bedeutungen von „provide“.
-4. **Die Doku ist veraltet.** Das README beschreibt `StructuredOutputTools`,
-   `Skills` und `builtins`, die es nicht mehr gibt. Das Coverage-Gate aus der
-   Doku existiert nicht.
-5. **Es fehlt `py.typed`.** Für eine SDK, die stark auf Typen setzt (der
-   `Inject`-Trick, Overloads, `ParamsT`), heißt das: Nutzer bekommen davon
-   nichts mit.
 
 ---
 
@@ -178,18 +172,13 @@ Anwendungsfall für DI.
 geprüft werden kann. Im Container explizite Bindings erlauben,
 z. B. `@provide(as_=SearchPort)`.
 
-### B12 – Kein `py.typed` · hoch
+### B12 – erledigt
 
-Weder im Paket noch im gebauten Wheel gibt es ein `py.typed`. Typechecker
-behandeln das Paket damit als untypisiert. `Inject[T]` (das per
-`TYPE_CHECKING` zu `T` wird), die Overloads und die `ParamsT`-Inferenz für
-`params=` wirken bei Nutzern nicht. Lösung: eine leere Datei
-`agenttoolkit/py.typed` anlegen. Hatchling packt sie automatisch mit ein.
+`agenttoolkit/py.typed` ist angelegt und landet im Wheel.
 
-### B13 – Das dokumentierte Coverage-Gate gibt es nicht · niedrig · bestätigt
+### B13 – erledigt
 
-README und CONTRIBUTING versprechen: „fails below 90%“. In `pyproject.toml`
-steht aber weder `--cov-fail-under` noch `fail_under`.
+`fail_under = 90` steht jetzt in `[tool.coverage.report]`.
 
 ### B14 – Leere Fehlermeldungen bei Exceptions ohne Text · niedrig · bestätigt
 
@@ -484,32 +473,22 @@ Weitere Kleinigkeiten:
 ## 5. Fehlende Features (nach Wichtigkeit)
 
 1. Ergebnistyp mit `is_error` und ein Formatter-Hook für Fehler (R4)
-2. `py.typed` (B12)
-3. Eine einzige Dependency-Auflösung mit Vorrang des per-Call-Context
+2. Eine einzige Dependency-Auflösung mit Vorrang des per-Call-Context
    (B2/B3/E7)
-4. `@tool` auch für freie Funktionen (E1)
-5. Tool-Call-ID und JSON-String als Eingabe in `execute`/`ToolCall` (E4)
-6. Sync-Tools in einem Thread ausführen (R2)
-7. `ApprovalMiddleware` und Approval abhängig von den Argumenten (E6)
-8. Docstring als Fallback für Beschreibungen (E11)
-9. Filtern und Teilmengen nach Tags, Registry-Grundfunktionen (E3/E10)
-10. Schema-Normalizer und OpenAI-strict-Export (E12)
-11. Helfer zur Serialisierung der Ergebnisse (E5)
-12. `OutputBudget` mit Gesamtgrenze und optional als Middleware (R9)
+3. `@tool` auch für freie Funktionen (E1)
+4. Tool-Call-ID und JSON-String als Eingabe in `execute`/`ToolCall` (E4)
+5. Sync-Tools in einem Thread ausführen (R2)
+6. `ApprovalMiddleware` und Approval abhängig von den Argumenten (E6)
+7. Docstring als Fallback für Beschreibungen (E11)
+8. Filtern und Teilmengen nach Tags, Registry-Grundfunktionen (E3/E10)
+9. Schema-Normalizer und OpenAI-strict-Export (E12)
+10. Helfer zur Serialisierung der Ergebnisse (E5)
+11. `OutputBudget` mit Gesamtgrenze und optional als Middleware (R9)
 
 ---
 
 ## 6. Doku und Repo
 
-- **README ist stark veraltet.** Die Abschnitte „Structured-output tools“,
-  „Filesystem and shell primitives“, „Skills“, die Feature-Liste
-  (`effects`-Metadaten, Structured-Output-Registry, FS/Shell-Ports, Skills)
-  und das Inhaltsverzeichnis beschreiben Code, der in diesem Stand gelöscht
-  ist. Wer das README kopiert, bekommt `ImportError`.
-- `experiments/README.md` nennt gelöschte Skripte (`chat_with_sandbox.py`
-  usw.) und Ordner (`sandboxing/`, `tools/`, `skills/`).
-- CONTRIBUTING und README versprechen ein Coverage-Gate, das es nicht gibt
-  (B13).
 - 0.4.0 entfernt viele öffentliche APIs, aber es gibt weder CHANGELOG noch
   Migrationshinweise. Bei einer 0.x-Version ist das erlaubt, für Nutzer ist es
   trotzdem ein harter Bruch.
@@ -528,8 +507,7 @@ Weitere Kleinigkeiten:
 ## 7. Empfohlene Reihenfolge
 
 **Schnell erledigt (je unter einer Stunde):**
-B5 · B6 · B8 · B12 · B13 · B14 · B15 · README/experiments-README
-aufräumen · `name` nur als Keyword (E11)
+B5 · B6 · B8 · B14 · B15 · `name` nur als Keyword (E11)
 
 **Kurzfristig (nächster Minor):**
 B2 + B3 (eine Auflösefunktion) · B4 · B7 · B9 · B10/E3 · B16/B17/R8

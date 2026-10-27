@@ -20,11 +20,8 @@ it is a building block, not a framework.
 - [Dependency injection](#dependency-injection)
 - [Conditional availability and descriptions](#conditional-availability-and-descriptions)
 - [Middleware](#middleware)
-- [Structured-output tools](#structured-output-tools)
 - [Merging registries](#merging-registries)
 - [Putting it together](#putting-it-together)
-- [Filesystem and shell primitives](#filesystem-and-shell-primitives)
-- [Skills](#skills)
 - [Features](#features)
 - [Development](#development)
 - [License](#license)
@@ -130,14 +127,14 @@ class CatalogTools(Toolset):
         return " ".join(query.split())
 
 
-toolbox = Toolbox(CatalogTools(catalog_service), FilesTools(filesystem))
-toolbox.add(ShellTools(sandbox), exclude={"kill"})
+toolbox = Toolbox(CatalogTools(catalog_service))
+toolbox.add(AdminTools(admin_service), exclude={"delete_user"})
 ```
 
 The namespace prefixes every exposed method: the example registers
 `catalog_search` and `catalog_get`. It defaults to the snake_case class name
-without a `Tools`, `Toolbox`, `Toolset` or `Plugin` suffix. Set it with a class keyword
-(`class CatalogTools(Toolset, namespace="shop")`), or use
+without a `Tools`, `Toolbox`, `Toolset` or `Plugin` suffix. Set it with a
+class keyword (`class CatalogTools(Toolset, namespace="shop")`), or use
 `namespace=None` to expose the local names unprefixed. Pass `namespace=` to
 `toolbox.add(...)` to register a second instance of the same class.
 `include=` and `exclude=` select tools by their local name; unknown names are
@@ -387,54 +384,6 @@ when the name exists. This keeps every execution stage inside the explicit
 chain, allowing an installed error boundary to translate any failure for the
 agent.
 
-## Structured-output tools
-
-Some providers select a tool by asking the model for a structured response
-rather than a provider-specific tool call. Use `StructuredOutputTools` in
-that case. It creates one Pydantic model per available tool, so the model
-can choose a tool while also returning fields shared by every response.
-
-This is useful when a tool call has to travel together with additional
-output — the model's reasoning, a summary of the state it observed, or a
-request identifier:
-
-```python
-from pydantic import BaseModel, Field
-
-from agenttoolkit import StructuredOutputTools
-
-
-class AgentResponse(BaseModel):
-    reasoning: str = Field(description="Why this tool is the next step")
-    state_summary: str = Field(description="What the model observed so far")
-
-
-toolbox = StructuredOutputTools()
-
-
-@toolbox.tool("Search the connected knowledge base.")
-async def search(query: str) -> list[str]: ...
-
-
-[SearchTool] = toolbox.create_models(base_model=AgentResponse)
-
-# Give SearchTool to the LLM as its structured-output model.
-response = SearchTool.model_validate(
-    {
-        "reasoning": "The knowledge base has not been consulted yet.",
-        "state_summary": "No results collected so far.",
-        "search": {"query": "tool middleware"},
-    }
-)
-await toolbox.execute("search", response.search.model_dump())
-```
-
-`create_models()` returns only tools available in the active context.
-Pass `include_tools=[...]` to limit the choices, or `context=...` to derive
-them for a particular request. `StructuredOutputTools` shares registration,
-availability, middleware, execution, and merging with `Toolbox`; it differs
-only in how tools are presented to the model.
-
 ## Merging registries
 
 Combine tools from multiple `ToolRegistry` instances — e.g. when composing a
@@ -501,184 +450,6 @@ unknown tool name, invalid arguments, or an exception inside the tool then
 comes back as an agent-readable `"Tool failed: ..."` string, while the full
 exception is logged.
 
-## Filesystem and shell primitives
-
-`agenttoolkit.builtins` contains raw async implementations rather than a
-predefined set of model-facing tools. Applications can use them directly,
-inject them through `ToolContext`, or expose only the operations appropriate
-for a particular agent.
-
-```python
-from pathlib import Path
-
-from agenttoolkit.builtins import (
-    BindMount,
-    CommandDefaults,
-    DockerSandbox,
-    LocalWorkspace,
-    SandboxPolicy,
-)
-
-workspace = LocalWorkspace("./project")
-await workspace.write_file("src/example.py", "print('hello')\n")
-
-entries = await workspace.list_dir("src")
-source = await workspace.read_file(entries[0].path)
-
-output = workspace.root / "output"
-output.mkdir(exist_ok=True)
-cli_config = Path.home() / ".config" / "my-cli"
-
-policy = SandboxPolicy.for_workspace(
-    workspace.root,
-    writable=True,
-    enable_network_access=True,
-)
-sandbox = DockerSandbox(
-    "my-cli:latest",
-    defaults=CommandDefaults(working_directory=workspace.root),
-    policy=policy,
-    inherit_environment=("MY_CLI_TOKEN",),
-    mounts=(
-        BindMount.read_only(cli_config, "/home/agent/.config/my-cli"),
-        BindMount.read_write(output, "/output"),
-    ),
-    user="host",
-)
-async with sandbox:
-    result = await sandbox.execute("my-cli build --output /output")
-```
-
-The `Workspace` port provides `read_file`, `write_file`, `edit_file`, `glob`,
-`list_dir`, and `stat`. Exploration returns `Entry` values with a root-relative
-POSIX path, directory and symlink flags, size, and modification time. Local
-reads and writes are confined to the workspace root and bounded by a
-configurable file-size limit.
-
-The `CommandRunner` port returns a common `CommandResult` from local and
-isolated backends. `CommandDefaults` configures the working directory,
-environment, timeout, and captured-output limit. `SandboxPolicy` is separate
-and contains only isolation requirements: readable and writable paths, network
-access, memory, process, and CPU limits. A sandbox backend must enforce every
-requested isolation setting or reject it.
-
-Only backends that own persistent resources expose a lifecycle.
-`DockerSandbox` supports `open()`/`close()` and `async with`, starts one
-container, tunnels every command through `docker exec`, and removes the
-container afterwards. This preserves container state and avoids paying
-container startup latency for every command.
-If a Docker command times out, the sandbox removes the container to guarantee
-that no detached process keeps running; call `open()` again before continuing.
-
-`DockerSandbox` enforces all sandbox resource limits. `BubblewrapSandbox`
-supports filesystem and network isolation and rejects unsupported resource
-limits. `LocalShellRunner` executes trusted commands directly and accepts no
-`SandboxPolicy`, so it makes no isolation claim.
-
-`DockerSandbox` also supports named bind mounts and an explicit allowlist of
-host environment variables. `BindMount.read_write(...)` writes directly back
-to the host. `inherit_environment` fails fast when a requested variable is
-missing and forwards its name without embedding the secret value in the
-generated Docker arguments. On POSIX hosts, `user="host"` maps the container
-process to the host UID and GID so generated files remain owned by the
-developer. Use `environment={...}` on `CommandDefaults` or `env={...}` on
-`execute(...)` for explicit values and per-call overrides.
-
-## Skills
-
-Local Agent Skills are discovered from directories containing one
-subdirectory per skill, each with a `SKILL.md` file using YAML frontmatter
-(`name`, `description`, and optional `license`, `compatibility`, `metadata`,
-`allowed-tools`) followed by Markdown instructions:
-
-```
-skills/
-  internet-research/
-    SKILL.md
-    references/
-      guide.md
-    scripts/
-      search.py
-```
-
-`name` must be 1–64 lowercase letters, numbers, or hyphens, and must match
-its parent directory name.
-
-```python
-from agenttoolkit import Skills
-
-skills = Skills.from_dir("./skills")
-
-# Render the compact skill listing for the agent's system prompt.
-system_prompt = f"You are helpful.\n\n{skills.render_prompt()}"
-
-# Progressive loading returns full instructions and relative resource paths.
-loaded = skills.load("internet-research")
-system_prompt += f"\n\n{loaded.instructions}"
-
-# Re-scan the configured directories after skills are added or removed.
-changes = skills.refresh()
-print(changes.added, changes.updated, changes.removed)
-
-# The application decides which general filesystem and process tools to expose.
-guide = read_file(loaded.directory / "references/guide.md")
-output = await run_process(
-    ["python", "scripts/search.py", "python packaging"],
-    cwd=loaded.directory,
-)
-```
-
-`Skills.from_dir` accepts multiple directories; a skill discovered
-later overrides one with the same name from an earlier directory (logged as
-a warning). `SKILL.md` is re-parsed from disk on each `load`, so instructions
-can be edited without restarting the process. `refresh()` rebuilds the registry
-from the configured directories, picking up added, changed, and removed skills.
-If discovery fails, the previous registry remains available.
-
-`refresh()` returns an immutable `SkillChanges` value containing the registry
-revision and the added, updated, and removed skill names. `refresh_if_changed()`
-first compares a lightweight fingerprint of the `SKILL.md` paths, modification
-times, and sizes, avoiding parsing when no skill document changed.
-
-Agents that can write their own skills can attach `SkillRefreshMiddleware`.
-By default it checks the registry after every tool call, silently and without
-touching the tool's own result. The check uses a lightweight fingerprint, so
-unchanged skill documents are not reparsed:
-
-```python
-from agenttoolkit import (
-    CallLoggingMiddleware,
-    ErrorBoundaryMiddleware,
-    SkillRefreshMiddleware,
-)
-
-toolbox = Toolbox(
-    context=ToolContext(skills),
-    middleware=(
-        ErrorBoundaryMiddleware(),
-        CallLoggingMiddleware(),
-        SkillRefreshMiddleware(),
-    ),
-)
-```
-
-The registry is resolved from the call's `ToolContext`, not captured at
-construction — a per-call `context=` argument refreshes the registry
-actually in use, and the
-middleware is a no-op when the context holds no `Skills`.
-
-Invalid skill edits are not activated and
-the previous registry remains available. Applications that embed
-`skills.render_prompt()` in model context should render that dynamic portion
-again before each model invocation.
-
-`load()` returns an immutable `LoadedSkill` containing `name`, `instructions`,
-the absolute skill `directory`, and sorted relative `resources`. Resource
-reading, process execution, timeouts, sandboxing, and permissions deliberately
-belong to the application's general filesystem and process tools instead of
-the Skills API. Skill directories and their scripts must still be treated as
-trusted code.
-
 ## Features
 
 The complete list of what the toolkit provides:
@@ -696,14 +467,8 @@ The complete list of what the toolkit provides:
   logging middleware; no middleware is installed implicitly.
 - Thin, dependency-free schema adapters for OpenAI and Anthropic tool-call
   formats.
-- A separate structured-output registry that creates Pydantic tool models
-  without adding that interface to schema-based tools.
 - Tool implementations return their natural Python values; the execution
   pipeline does not impose an application-specific result envelope.
-- Async filesystem and shell ports with local, Docker, and Bubblewrap
-  implementations for common agent capabilities.
-- Local Agent Skills discovery and progressive loading, compatible with the
-  `SKILL.md` convention.
 
 ## Development
 

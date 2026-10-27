@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
 
-from toolbx import Toolbox, Toolset, tool
+from toolbx import Toolbox, Toolset, to_text, tool
 
 
 @dataclass(frozen=True)
@@ -69,13 +69,14 @@ async def main() -> None:
     # The toolset namespace becomes part of each model-facing tool name.
     print([schema.name for schema in toolbox.schemas()])
 
-    print(
-        await toolbox.execute(
-            "catalog_search",
-            {"query": "keyboard", "limit": 2},
-        )
-    )
-    print(await toolbox.execute("catalog_get", {"product_id": "p-3"}))
+    # to_text renders results the way a tool-result message expects them.
+    found = await toolbox.execute("catalog_search", {"query": "keyboard", "limit": 2})
+    print(to_text(found))
+    print(to_text(await toolbox.execute("catalog_get", {"product_id": "p-3"})))
+
+    # A narrower view, e.g. for a sub-agent that may only look up products.
+    lookup = toolbox.subset(names={"catalog_get"})
+    print(lookup.names())
 
 
 if __name__ == "__main__":

@@ -1,35 +1,43 @@
-import asyncio
+import json
 
 from pydantic import BaseModel, Field
 
-from toolbx import Toolbox, Toolset
-from toolbx import tool as mark_tool
+from toolbx import Toolbox, Toolset, tool
 
-toolbox = Toolbox()
+
+class Filters(BaseModel):
+    section: str | None = Field(default=None, description="Restrict to a section")
 
 
 class SearchParams(BaseModel):
     query: str = Field(description="Search query")
     limit: int = Field(default=10, ge=1)
+    filters: Filters = Field(default_factory=Filters)
 
 
-class DefinedTools1(Toolset, namespace=None):
-    @mark_tool("Search the documentation", params=SearchParams)
+class DocsTools(Toolset, namespace=None):
+    @tool("Search the documentation", params=SearchParams)
     def search(self, params: SearchParams) -> None:
         pass
 
 
-toolbox.add(DefinedTools1())
+toolbox = Toolbox(DocsTools())
 
 
-async def main() -> None:
+def show(label: str, schema: object) -> None:
+    print(f"{label}:\n{json.dumps(schema, indent=2)}\n")
+
+
+def main() -> None:
     native = toolbox.schemas()[0]
-    print("native:", native.model_dump())
-    openai = toolbox.to_openai()[0]
-    print("openai:", openai)
-    anthropic = toolbox.to_anthropic()[0]
-    print("anthropic:", anthropic)
+    show("native", native.model_dump())
+    show("anthropic", toolbox.to_anthropic()[0])
+    show("openai", toolbox.to_openai()[0])
+    # Strict mode: every field required, optional ones nullable.
+    show("openai strict", toolbox.to_openai(strict=True)[0])
+    # For providers that reject $ref/$defs.
+    show("inlined", native.inline_refs().input_schema)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

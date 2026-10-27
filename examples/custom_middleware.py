@@ -1,38 +1,46 @@
 import asyncio
 import time
 
-from toolbx import CallLoggingMiddleware, ErrorBoundaryMiddleware, Toolbox, Toolset
-from toolbx import tool as mark_tool
-from toolbx.tools.middleware import ToolCall, ToolHandler, ToolMiddleware
-
-
-class TimingMiddleware(ToolMiddleware):
-    async def __call__(self, call: ToolCall, call_next: ToolHandler) -> object:
-        started = time.perf_counter()
-        result = await call_next(call)
-        elapsed_ms = (time.perf_counter() - started) * 1000
-        print(f"  [timing] {call.name} took {elapsed_ms:.2f}ms")
-        return result
-
-
-toolbox = Toolbox(
-    middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware(), TimingMiddleware())
+from toolbx import (
+    CallLoggingMiddleware,
+    ErrorBoundaryMiddleware,
+    Toolbox,
+    ToolCall,
+    ToolHandler,
+    Toolset,
+    tool,
 )
 
 
-class DefinedTools1(Toolset, namespace=None):
-    @mark_tool("Simulate slow work")
+async def timing(call: ToolCall, call_next: ToolHandler) -> object:
+    started = time.perf_counter()
+    result = await call_next(call)
+    elapsed_ms = (time.perf_counter() - started) * 1000
+    print(f"  [timing] {call.name} took {elapsed_ms:.2f}ms")
+    return result
+
+
+class WorkTools(Toolset, namespace=None):
+    @tool("Simulate slow work")
     async def slow_task(self) -> str:
         await asyncio.sleep(0.05)
         return "done"
 
+    @tool("Fail on purpose")
+    def broken(self) -> str:
+        raise RuntimeError("disk full")
 
-toolbox.add(DefinedTools1())
+
+toolbox = Toolbox(
+    WorkTools(),
+    middleware=[ErrorBoundaryMiddleware(), CallLoggingMiddleware(), timing],
+)
 
 
 async def main() -> None:
-    result = await toolbox.execute("slow_task")
-    print(result)
+    print(await toolbox.execute("slow_task"))
+    # The error boundary turns the exception into text the model can read.
+    print(await toolbox.execute("broken"))
 
 
 if __name__ == "__main__":

@@ -23,18 +23,9 @@ a change that only works on one of those versions isn't done.
 
 ## Conventions
 
-- Python 3.13 evaluates annotations eagerly, so any module using a
-  forward reference (a class referencing its own name, or a name defined
-  later in the file) needs `from __future__ import annotations` at the
-  top. This isn't needed on 3.14 (PEP 649), but the project supports both,
-  so add it whenever it would matter on 3.13.
-- Use absolute imports (`from toolbx.tools.models import
-  Tool`), not relative imports — except in `__init__.py` files,
-  which use relative imports to re-export their package's public API.
-- Don't add comments or docstrings that just restate what the code already
-  says. Only write one when it explains something a reader couldn't get
-  from the code itself: why something exists, a hidden constraint, or a
-  behavior that would otherwise be surprising.
+- Follow the code conventions in [AGENTS.md](AGENTS.md): forward-reference
+  annotations for Python 3.13, absolute imports, and comments only where they
+  explain something the code cannot.
 - Keep `toolbx` provider-neutral and free of application-specific
   tools or an agent loop — that scope belongs in consuming projects, not
   here. `experiments/` holds example integrations and isn't part of the

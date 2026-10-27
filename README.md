@@ -84,7 +84,8 @@ that shape. Only an explicit `params=User` uses `{"name": "Ada"}` at the top lev
 
 ### Schema export
 
-Exported schemas leave out the `title` keys Pydantic adds to every model and
+Exported schemas are independent copies and can be transformed without changing
+the registered tool. They leave out the `title` keys Pydantic adds to every model and
 field, since they only cost tokens. Nested models still use `$defs`/`$ref`;
 `schema.inline_refs()` returns a copy without them for providers that reject
 references (recursive models cannot be inlined).
@@ -154,6 +155,8 @@ exceptions propagate to the caller. There is no result wrapper; the agent loop
 maps exceptions into its provider's error format and serializes values.
 `to_text(result)` covers the common case: strings pass through unchanged, and
 everything else, including Pydantic models, becomes JSON.
+`OutputBudget(max_chars=20_000).truncate(text)` caps long text, including
+truncation markers, while retaining both ends where the budget permits.
 
 `ErrorBoundaryMiddleware` is optional. When explicitly installed, it logs
 exceptions and turns them into `"Tool failed: ..."` strings. Applications that
@@ -200,12 +203,14 @@ contains the name, parsed `arguments`, optional `call_id` and registered tool.
 JSON decoding happens before middleware dispatch. Use
 `dataclasses.replace(call, arguments=...)` when forwarding changed arguments.
 
+### Metadata
+
 Without a description argument, `@tool()` uses the method's docstring; a tool
 with neither is rejected at class definition.
 
 `@tool` supports the keyword-only `name`, `tags`, `metadata` and
-`requires_approval`. These runtime hints are available through
-`toolbox.get(name)` and iteration.
+`requires_approval`. These runtime hints are available on each registered
+`Tool`, e.g. `toolbox["catalog_search"].tags`.
 
 ### Approval
 
@@ -233,11 +238,9 @@ Without the middleware, `requires_approval` does not gate execution;
 `tool.approval_required(arguments)` evaluates it for custom agent loops. Invalid
 arguments fail validation before the user is asked.
 
-Exported schemas are independent copies and can be transformed without changing
-the registered tool. `OutputBudget(max_chars=20_000)` caps long text, including
-truncation markers, while retaining both ends where the budget permits.
-
 ## Migration
+
+### 0.4.0
 
 This API deliberately breaks earlier versions:
 
@@ -252,6 +255,11 @@ This API deliberately breaks earlier versions:
   `to_anthropic`.
 - `Tool.namespace` replaces `Tool.plugin_name`. Raw invocation helpers on
   `Tool` are internal; use `Toolbox.execute` for dispatched calls.
+
+### Unreleased
+
+Changes since 0.4.0 that break existing code:
+
 - Names are unified: `Tool(params_model=)`, `build_schema(params_model=)` and
   `tool.params_model` replace `param_model`; `tool.input_schema` and
   `ToolSchema.input_schema` replace `parameters`; `ToolCall.arguments` replaces

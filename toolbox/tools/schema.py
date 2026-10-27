@@ -53,8 +53,6 @@ def _infer_param_model(func: Callable) -> type[BaseModel] | None:
     hints = get_type_hints(func, include_extras=True)
     candidates: list[Any] = []
     for name, parameter in signature.parameters.items():
-        if name in {"self", "cls"}:
-            continue
         if parameter.kind in {
             inspect.Parameter.VAR_POSITIONAL,
             inspect.Parameter.VAR_KEYWORD,
@@ -82,8 +80,6 @@ def _model_from_callable(func: Callable) -> type[BaseModel]:
     descriptions: dict[str, str] = {}
 
     for name, parameter in signature.parameters.items():
-        if name in {"self", "cls"}:
-            continue
         annotation = hints.get(name, str)
         if _is_injected(annotation):
             continue

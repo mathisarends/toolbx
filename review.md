@@ -39,17 +39,6 @@ oder entfallene Punkte werden gelöscht; verbleibende IDs bleiben stabil.
 
 ## 1. Bugs
 
-### B8 – Parameter namens `self`/`cls` verschwinden aus dem Schema · niedrig · bestätigt
-
-`schema.py:85`, `schema.py:127` und `arguments.py:53` überspringen Parameter
-anhand ihres Namens. Auch eine Toolset-Methode
-`def classify(self, cls: str, text: str)` verliert dadurch ihren regulären
-Parameter `cls`: Er fehlt im Schema, und `extra="forbid"` lehnt ihn ab.
-
-Das Überspringen ist ohnehin unnötig, weil Toolset-Methoden gebunden
-registriert werden und `inspect.signature` bei gebundenen Methoden `self`
-schon weglässt. Die Sonderbehandlung kann ersatzlos entfallen.
-
 ### B9 – `Tool.parse_arguments` und `Tool.execute` passen nicht zusammen · mittel · bestätigt
 
 `parse_arguments` liefert `model_dump(...)`, also Dicts. `execute` ruft die
@@ -315,7 +304,7 @@ auf die explizite Übergabe von Dependencies im Toolset-Konstruktor umstellen.
 Die neue API für Availability und Description vorher klären (E8).
 
 **Kleine, unabhängige Korrekturen:**
-B8 · B14 · `name` nur als Keyword (E11)
+B14 · `name` nur als Keyword (E11)
 
 **Weitere Vereinfachungen und Validierung:**
 B9 · B10/E3 · B16/B17/R8

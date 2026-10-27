@@ -78,3 +78,21 @@ def test_name_limit_applies_to_the_complete_exported_name() -> None:
     with pytest.raises(ValueError, match="at most 64 characters"):
         toolbox.add(Names(), namespace="n" * 63)
     assert list(toolbox) == before
+
+
+@pytest.mark.asyncio
+async def test_bound_methods_keep_regular_parameters_named_cls_and_self() -> None:
+    class Names(Toolset, namespace=None):
+        @tool("Classify")
+        def classify(self, cls: str, text: str) -> str:
+            return f"{cls}:{text}"
+
+        @tool("Echo")
+        def echo(instance, self: str) -> str:
+            return self
+
+    toolbox = Toolbox(Names())
+    assert await toolbox.execute("classify", {"cls": "news", "text": "hello"}) == (
+        "news:hello"
+    )
+    assert await toolbox.execute("echo", {"self": "hello"}) == "hello"

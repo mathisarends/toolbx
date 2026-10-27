@@ -50,8 +50,6 @@ def _tool_arguments(tool: Tool, params: BaseModel) -> dict[str, Any]:
     hints = get_type_hints(tool.fn, include_extras=True)
     candidates: list[str] = []
     for name in inspect.signature(tool.fn).parameters:
-        if name in {"self", "cls"}:
-            continue
         annotation = hints.get(name)
         if annotation is not None and _is_injected(annotation):
             continue

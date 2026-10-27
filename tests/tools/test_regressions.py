@@ -1,7 +1,7 @@
 import logging
 
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 from toolbox import ErrorBoundaryMiddleware, Toolbox, Toolset, tool
 
@@ -203,3 +203,28 @@ async def test_call_logging_keeps_arguments_out_of_info_logs(caplog) -> None:
     with caplog.at_level(logging.DEBUG, logger="toolbox.tools.middleware"):
         await toolbox.execute("accept", {"token": "sensitive-value"})
     assert "sensitive-value" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_unknown_arguments_are_rejected_in_both_definition_styles() -> None:
+    class Params(BaseModel):
+        model_config = ConfigDict(extra="ignore")
+        value: int
+
+    class Inputs(Toolset, namespace=None):
+        @tool("Signature")
+        def signature(self, value: int) -> int:
+            return value
+
+        @tool("Explicit params", params=Params)
+        def explicit(self, params: Params) -> int:
+            assert isinstance(params, Params)
+            return params.value
+
+    toolbox = Toolbox(Inputs())
+    for name in ("signature", "explicit"):
+        assert await toolbox.execute(name, {"value": "7"}) == 7
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            await toolbox.execute(name, {"value": 7, "hallucinated": True})
+        assert toolbox.get(name).parameters["additionalProperties"] is False
+    assert Params.model_config["extra"] == "ignore"

@@ -73,6 +73,8 @@ Constructor dependencies never appear in the tool schema. With `params=Model`,
 the model fields form the top-level input object and the method receives the
 validated model, including nested model instances. Pydantic performs input
 validation; signature parameters require type annotations.
+Unknown top-level arguments are rejected in both definition styles. Explicit
+params models are adapted without changing the application's model configuration.
 
 A model used in a normal signature stays nested: `create(user: User)` accepts
 `{"user": {"name": "Ada"}}`. Adding another method parameter does not change

@@ -11,14 +11,6 @@ gel?scht; verbleibende IDs bleiben stabil.
 
 ## 1. Dinge, die in der Praxis schieflaufen können
 
-### R6 – Uneinheitliche Behandlung unbekannter Argumente
-
-Bei aus der Signatur erzeugten Models gilt `extra="forbid"`, bei
-nutzerdefinierten Pydantic-Models der Pydantic-Default `ignore` (bestätigt).
-Ein halluziniertes Argument führt also je nach Definitionsart zu einem
-Fehler oder wird still verworfen. Das sollte einheitlich sein (ich würde
-`forbid` nehmen) oder zumindest dokumentiert werden.
-
 ### R8 – Typ-Introspektion bei jedem Aufruf
 
 `resolve_arguments` und `_tool_arguments` untersuchen bei jedem Aufruf erneut

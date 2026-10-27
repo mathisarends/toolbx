@@ -40,7 +40,12 @@ def _schema_model(
     param_model: type[BaseModel] | None,
 ) -> type[BaseModel]:
     if param_model is not None:
-        return param_model
+        return create_model(
+            param_model.__name__,
+            __base__=param_model,
+            __config__=ConfigDict(extra="forbid"),
+            __module__=param_model.__module__,
+        )
     if func is None:
         raise ValueError("A callable or param_model is required")
     return _model_from_callable(func)

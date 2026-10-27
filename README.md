@@ -99,6 +99,16 @@ atomic: a collision leaves the destination unchanged. `merge(other, replace=True
 explicitly replaces colliding tools. Complete exported names must match
 `[A-Za-z0-9_-]{1,64}`.
 
+A toolbox behaves like a read-mostly mapping of exported names to tools:
+`toolbox["catalog_search"]` raises `KeyError` for unknown names, `get` returns
+`None`, and `in`, `names()` and `remove(name)` work as expected.
+`subset(names=..., tags=...)` returns a new toolbox with the matching tools and
+the same middleware, for example to give a sub-agent read-only tools:
+
+```python
+reader = toolbox.subset(tags={"read"})
+```
+
 ## Dynamic availability
 
 Availability callbacks receive the toolset instance and are evaluated for each

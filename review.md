@@ -25,12 +25,6 @@ Sollen Beschreibungen dynamisch aus dem Zustand einer Toolset-Instanz
 entstehen können? Falls ja, sollte der Callback wie bei `available_when`
 die Toolset-Instanz erhalten.
 
-### E10 – Registry-Grundfunktionen fehlen
-
-`get()` liefert `None`, deshalb gibt es überall `if tool is not None`. Es
-fehlen `__getitem__`, `__contains__`, `names`, `remove`/`unregister` und eine
-Teilmenge oder Ansicht (`toolbox.subset(tags=…)`), z. B. für Sub-Agenten.
-
 ### E12 – Das Schema enthält viel Ballast
 
 Pydantic erzeugt für jedes Feld `title` (`"title": "Q"`), dazu ein
@@ -45,10 +39,6 @@ Felder `required`, optionale Felder als nullable).
 
 ## 2. Sprache und Benennung
 
-- `Toolbox.execute` meldet bei einem Tool, das es gibt, das aber nicht
-  verfügbar ist, „Unknown tool“. Für das LLM ist das in Ordnung, beim Debuggen
-  irritiert es. Ein Log-Eintrag auf DEBUG-Level mit dem echten Grund würde
-  helfen.
 - Die Model-Namen entstehen per `function_name.title()`, aus `get_HTTP` wird
   `Get_Http` → `GetHttpParams`. Rein kosmetisch, landet aber im Schema-`title`.
 

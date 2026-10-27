@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from collections.abc import Collection, Iterator, Mapping, Sequence
 from types import EllipsisType
 from typing import Any
@@ -17,6 +18,8 @@ from toolbx.tools.toolset import (
     require_valid_name,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class Toolbox:
     """Register and execute toolsets with provider-neutral tool-call schemas."""
@@ -27,7 +30,8 @@ class Toolbox:
         middleware: Sequence[ToolMiddleware] | None = None,
     ) -> None:
         self._tools: dict[str, Tool] = {}
-        self._handler = compose(middleware or (), self._invoke)
+        self._middleware = tuple(middleware or ())
+        self._handler = compose(self._middleware, self._invoke)
         for toolset in toolsets:
             self.add(toolset)
 
@@ -119,6 +123,44 @@ class Toolbox:
     def get(self, name: str) -> Tool | None:
         return self._tools.get(name)
 
+    def names(self) -> tuple[str, ...]:
+        return tuple(self._tools)
+
+    def remove(self, name: str) -> Tool:
+        try:
+            return self._tools.pop(name)
+        except KeyError:
+            raise KeyError(f"Unknown tool '{name}'") from None
+
+    def subset(
+        self,
+        *,
+        names: Collection[str] | None = None,
+        tags: Collection[str] | None = None,
+    ) -> Toolbox:
+        """Return a new toolbox with the selected tools and the same middleware.
+
+        A tool is selected when its name is in ``names`` or it carries any of
+        ``tags``. Tools are shared, not copied, so they stay bound to the same
+        toolset instances.
+        """
+        if isinstance(names, str) or isinstance(tags, str):
+            raise TypeError("names and tags must be collections of strings")
+        if names is None and tags is None:
+            raise ValueError("subset needs names or tags")
+        unknown = sorted(set(names or ()) - self._tools.keys())
+        if unknown:
+            raise ValueError(f"Unknown tools: {', '.join(unknown)}")
+        wanted_names = set(names or ())
+        wanted_tags = set(tags or ())
+        selected = Toolbox(middleware=self._middleware)
+        selected._tools = {
+            name: tool
+            for name, tool in self._tools.items()
+            if name in wanted_names or tool.tags & wanted_tags
+        }
+        return selected
+
     async def execute(
         self,
         name: str,
@@ -171,9 +213,22 @@ class Toolbox:
     def __len__(self) -> int:
         return len(self._tools)
 
+    def __contains__(self, name: object) -> bool:
+        return name in self._tools
+
+    def __getitem__(self, name: str) -> Tool:
+        try:
+            return self._tools[name]
+        except KeyError:
+            raise KeyError(f"Unknown tool '{name}'") from None
+
     async def _invoke(self, call: ToolCall) -> object:
         tool = call.tool
         if tool is None or not tool.is_available():
+            if tool is not None:
+                logger.debug(
+                    "Tool '%s' is registered but currently unavailable", call.name
+                )
             available = [
                 candidate.name
                 for candidate in self._tools.values()

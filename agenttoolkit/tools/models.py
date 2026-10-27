@@ -20,14 +20,10 @@ class ToolSchemaFormat(StrEnum):
     ANTHROPIC = "anthropic"
 
 
-type StatusFormatter[ParamsT: BaseModel] = str | Callable[[ParamsT], str]
-
-
 @dataclass(frozen=True, slots=True)
 class ToolMetadata:
     """Runtime hints which do not belong in an LLM function schema."""
 
-    status: StatusFormatter[Any] | None = None
     tags: frozenset[str] = field(default_factory=frozenset)
     extra: Mapping[str, Any] = field(default_factory=dict)
 
@@ -68,10 +64,6 @@ class Tool:
             if parameters is not None
             else self.input_model.model_json_schema(mode="validation")
         )
-
-    @property
-    def status(self) -> StatusFormatter[Any] | None:
-        return self._metadata.status
 
     @property
     def tags(self) -> frozenset[str]:
@@ -116,20 +108,6 @@ class Tool:
     async def execute(self, arguments: dict[str, Any]) -> object:
         result = self.fn(**arguments)
         return await result if inspect.isawaitable(result) else result
-
-    def format_status(self, args: BaseModel | Mapping[str, Any]) -> str | None:
-        status = self.status
-        if status is None:
-            return None
-        if isinstance(status, str):
-            return status
-
-        model = (
-            args
-            if isinstance(args, BaseModel)
-            else self.input_model.model_validate(dict(args))
-        )
-        return status(model)
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Tool) and self.name == other.name

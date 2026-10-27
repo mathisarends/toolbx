@@ -8,7 +8,6 @@ from typing import Any
 from pydantic import BaseModel
 
 from agenttoolkit.tools.binding import ToolAvailability, ToolDescription
-from agenttoolkit.tools.models import StatusFormatter
 
 _TOOL_DEFINITION_ATTRIBUTE = "__agenttoolkit_tool_definition__"
 
@@ -20,7 +19,6 @@ class ToolDefinition:
     description: str | ToolDescription | None
     name: str | None
     params: type[BaseModel] | None
-    status: StatusFormatter[Any] | None
     requires_approval: bool
     available_when: ToolAvailability | None
     tags: tuple[str, ...]
@@ -32,7 +30,6 @@ def tool[ParamsT: BaseModel, **CallT, ResultT](
     name: str | None = None,
     *,
     params: type[ParamsT] | None = None,
-    status: StatusFormatter[ParamsT] | None = None,
     requires_approval: bool = False,
     available_when: ToolAvailability | None = None,
     tags: Sequence[str] = (),
@@ -47,7 +44,6 @@ def tool[ParamsT: BaseModel, **CallT, ResultT](
         description=description,
         name=name,
         params=params,
-        status=status,
         requires_approval=requires_approval,
         available_when=available_when,
         tags=tuple(tags),

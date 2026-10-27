@@ -42,10 +42,7 @@ class AddParams(BaseModel):
     b: float = Field(description="Second addend")
 
 
-@toolbox.tool(
-    "Add two numbers together",
-    status=lambda params: f"Adding {params.a} + {params.b}",
-)
+@toolbox.tool("Add two numbers together")
 def add(params: AddParams) -> float:
     return params.a + params.b
 

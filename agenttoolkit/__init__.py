@@ -1,7 +1,6 @@
 from .dependency import DependencyProvider, provide
 from .output import OutputBudget
 from .tools import (
-    AgentToolset,
     CallLoggingMiddleware,
     ErrorBoundaryMiddleware,
     Inject,
@@ -16,6 +15,7 @@ from .tools import (
     ToolRegistry,
     ToolSchema,
     ToolSchemaFormat,
+    Toolset,
     build_schema,
     description_from_context,
     provided,
@@ -24,7 +24,6 @@ from .tools import (
 )
 
 __all__ = [
-    "AgentToolset",
     "CallLoggingMiddleware",
     "DependencyProvider",
     "ErrorBoundaryMiddleware",
@@ -41,6 +40,7 @@ __all__ = [
     "ToolSchema",
     "ToolSchemaFormat",
     "Toolbox",
+    "Toolset",
     "build_schema",
     "description_from_context",
     "provide",

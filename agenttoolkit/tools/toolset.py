@@ -68,7 +68,7 @@ def default_namespace(class_name: str) -> str:
     return _WORD_BOUNDARY.sub("_", class_name).lower()
 
 
-class AgentToolset:
+class Toolset:
     """Base class for grouping ``@tool`` methods that share constructor state.
 
     The namespace prefixes every exposed tool name. It defaults to the

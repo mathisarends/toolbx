@@ -1,11 +1,11 @@
-"""Group LLM tools in an externally constructed AgentToolset instance."""
+"""Group LLM tools in an externally constructed Toolset instance."""
 
 import asyncio
 from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
 
-from agenttoolkit import AgentToolset, Toolbox, tool
+from agenttoolkit import Toolbox, Toolset, tool
 
 
 @dataclass(frozen=True)
@@ -34,7 +34,7 @@ class SearchParams(BaseModel):
     limit: int = Field(default=5, ge=1, le=20)
 
 
-class CatalogTools(AgentToolset):
+class CatalogTools(Toolset):
     """The LLM presentation layer in front of CatalogService."""
 
     def __init__(self, catalog: CatalogService) -> None:

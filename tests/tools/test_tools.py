@@ -168,7 +168,7 @@ async def test_tools_do_not_install_an_error_boundary_by_default() -> None:
         await toolbox.execute("internal_failure")
 
 
-def test_duplicate_registration_and_status_validation() -> None:
+def test_duplicate_registration_is_rejected() -> None:
     toolbox = Toolbox()
 
     @toolbox.tool("First")

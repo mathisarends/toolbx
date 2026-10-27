@@ -11,10 +11,10 @@ from agenttoolkit.tools.arguments import resolve_arguments
 from agenttoolkit.tools.binding import ToolAvailability, ToolDescription
 from agenttoolkit.tools.context import _INJECT_MARKER, ToolContext
 from agenttoolkit.tools.middleware import ToolCall, ToolMiddleware, compose
-from agenttoolkit.tools.models import StatusFormatter, Tool, ToolMetadata
+from agenttoolkit.tools.models import Tool, ToolMetadata
 from agenttoolkit.tools.toolset import (
-    AgentToolset,
     ToolEntry,
+    Toolset,
     collect_tool_entries,
     require_valid_name,
 )
@@ -54,7 +54,6 @@ class ToolRegistry:
         name: str | None = None,
         *,
         params: type[ParamsT] | None = None,
-        status: StatusFormatter[ParamsT] | None = None,
         requires_approval: bool = False,
         available_when: ToolAvailability | None = None,
         tags: Sequence[str] = (),
@@ -74,7 +73,6 @@ class ToolRegistry:
                     fn=func,
                     param_model=params,
                     metadata=ToolMetadata(
-                        status=status,
                         tags=frozenset(tags),
                         extra=metadata or {},
                     ),
@@ -108,9 +106,9 @@ class ToolRegistry:
     ) -> tuple[Tool, ...]:
         """Atomically register the ``@tool`` methods of a toolset instance.
 
-        The namespace defaults to the one declared by an ``AgentToolset``
+        The namespace defaults to the one declared by a ``Toolset``
         subclass; pass it to register several instances of one class or to
-        register objects which are not ``AgentToolset`` subclasses.
+        register objects which are not ``Toolset`` subclasses.
         ``include`` and ``exclude`` select tools by their local, unprefixed
         name.
         """
@@ -118,9 +116,9 @@ class ToolRegistry:
             raise TypeError("add expects an instance, not a class")
         toolset_type = type(toolset)
         if namespace is ...:
-            if not isinstance(toolset, AgentToolset):
+            if not isinstance(toolset, Toolset):
                 raise TypeError(
-                    f"{toolset_type.__name__} is not an AgentToolset; "
+                    f"{toolset_type.__name__} is not a Toolset; "
                     "pass namespace= to register it"
                 )
             namespace = toolset_type.namespace
@@ -162,7 +160,6 @@ class ToolRegistry:
                     fn=method,
                     param_model=definition.params,
                     metadata=ToolMetadata(
-                        status=definition.status,
                         tags=frozenset(definition.tags),
                         extra=definition.metadata,
                     ),

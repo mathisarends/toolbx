@@ -26,7 +26,6 @@ class SearchPlugin:
 
     @tool(
         "Search a configured source",
-        status=lambda params: f"Searching for {params.query}",
         tags=["search"],
         metadata={"owner": "knowledge"},
     )
@@ -68,7 +67,6 @@ async def test_plugin_registers_bound_methods_with_names_and_metadata() -> None:
     assert search.local_name == "search"
     assert search.tags == frozenset({"search"})
     assert search.extra == {"owner": "knowledge"}
-    assert search.format_status({"query": "DI"}) == "Searching for DI"
     assert fetch.requires_approval is True
     assert toolbox.get("helper") is None
     assert await toolbox.execute("knowledge_search", {"query": "DI"}) == ("docs:DI:10")

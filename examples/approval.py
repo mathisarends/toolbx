@@ -12,12 +12,8 @@ class TransferParams(BaseModel):
     to: str = Field(description="Recipient account")
 
 
-# `status` renders a human-readable line for the arguments an agent is about
-# to call the tool with, before execution — handy for approval prompts and
-# activity logs. It accepts a plain string or a callable taking the params.
 @toolbox.tool(
     "Transfer money between accounts (needs confirmation)",
-    status=lambda params: f"Transferring {params.amount} to {params.to}",
     requires_approval=True,
 )
 def transfer(params: TransferParams) -> str:
@@ -27,14 +23,11 @@ def transfer(params: TransferParams) -> str:
 async def main() -> None:
     tool = toolbox.get("transfer")
     assert tool is not None
-
-    args = TransferParams(amount=50.0, to="acct-42")
-    print("status:", tool.format_status(args))
     print("requires_approval:", tool.requires_approval)
 
-    # `Tools.execute` itself does not gate on `requires_approval` — that's an
+    # `Toolbox.execute` itself does not gate on `requires_approval` — that's an
     # agent-loop concern (see experiments/agent.py's `confirm` callback).
-    # A caller decides whether to ask first, using this flag and the status.
+    args = TransferParams(amount=50.0, to="acct-42")
     result = await toolbox.execute("transfer", args.model_dump())
     print(result)
 

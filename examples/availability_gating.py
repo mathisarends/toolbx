@@ -13,18 +13,17 @@ class UserInfo:
 toolbox = Toolbox(context=ToolContext(UserInfo(name="Mathis")))
 
 
-# Hidden entirely unless a UserInfo dependency is present in the context.
-@toolbox.tool("Get personalized settings", available_when=provided(UserInfo))
+has_user = provided(UserInfo)
+is_admin = requires(UserInfo, predicate=lambda user: user.is_admin)
+
+
+@toolbox.tool("Get personalized settings", available_when=has_user)
 def get_settings() -> str:
     return "settings"
 
 
-# Hidden unless a UserInfo is present AND satisfies the predicate. `~`, `&`
-# and `|` combine ToolAvailability instances, e.g. `requires(...) & provided(...)`.
-@toolbox.tool(
-    "Delete a user account (admin only)",
-    available_when=requires(UserInfo, predicate=lambda user: user.is_admin),
-)
+# `~`, `&` and `|` combine availabilities, e.g. `has_user & ~is_admin`.
+@toolbox.tool("Delete a user account (admin only)", available_when=is_admin)
 def delete_account() -> str:
     return "account deleted"
 

@@ -20,10 +20,8 @@ Die größten Baustellen:
    `ToolContext` werden von `Inject`, `provided()`/`requires()` und
    `description_from_context` jeweils unterschiedlich ausgewertet. Daraus
    entstehen echte Bugs (B2, B3).
-2. **Status-Rendering und Fehlerbehandlung liegen außerhalb der Pipeline.**
-   `format_status` kann den Agent-Loop crashen, obwohl eine ErrorBoundary
-   installiert ist (B1). Fehler kommen als normaler String zurück und sind
-   von Erfolgen nicht zu unterscheiden.
+2. **Fehler sind von Erfolgen nicht zu unterscheiden.** Die ErrorBoundary
+   liefert Fehler als normalen String zurück (R4).
 3. **Begriffe sind uneinheitlich.** plugin/toolset/namespace,
    params/param_model/input_model/parameters/raw_args/arguments/args,
    metadata/extra und vier Bedeutungen von „provide“.
@@ -38,22 +36,10 @@ Die größten Baustellen:
 
 ## 1. Bugs
 
-### B1 – `format_status` crasht bei ungültigen Modell-Argumenten · hoch · bestätigt
+### B1 – entfällt
 
-`Tool.format_status` validiert rohe Argumente mit `input_model.model_validate`
-(`agenttoolkit/tools/models.py:127-131`). Das läuft **vor** und **außerhalb**
-der Middleware-Kette, ein `ErrorBoundaryMiddleware` hilft hier also nicht.
-LLMs liefern regelmäßig ungültige Argumente, und genau dann stürzt der Loop ab.
-Die README empfiehlt genau dieses Muster (`print(tool.format_status(arguments))`),
-und `experiments/environments/console.py:28` macht es auch so.
-
-```
-format_status({"a": "nope"})  ->  ValidationError
-```
-
-**Fix:** Bei einem Validierungsfehler `None` zurückgeben (oder einen
-Fallback-Text), oder den Status als Teil der Pipeline rendern, z. B. als
-`call.status`, das in der Middleware gesetzt wird.
+`status`/`format_status` wurde entfernt, weil Status-Texte Sache der UI sind.
+Damit gibt es keinen Validierungsschritt mehr außerhalb der Middleware-Kette.
 
 ### B2 – `provided()` / `requires()` / `description_from_context` ignorieren den Container · hoch · bestätigt
 
@@ -197,7 +183,7 @@ z. B. `@provide(as_=SearchPort)`.
 Weder im Paket noch im gebauten Wheel gibt es ein `py.typed`. Typechecker
 behandeln das Paket damit als untypisiert. `Inject[T]` (das per
 `TYPE_CHECKING` zu `T` wird), die Overloads und die `ParamsT`-Inferenz für
-`status=` wirken bei Nutzern nicht. Lösung: eine leere Datei
+`params=` wirken bei Nutzern nicht. Lösung: eine leere Datei
 `agenttoolkit/py.typed` anlegen. Hatchling packt sie automatisch mit ein.
 
 ### B13 – Das dokumentierte Coverage-Gate gibt es nicht · niedrig · bestätigt
@@ -402,8 +388,7 @@ ApprovalMiddleware(confirm=async_confirm)       # gibt standardisierten Decline 
 @tool(..., requires_approval=lambda p: p.amount > 100)  # abhängig von den Argumenten
 ```
 
-Dann muss nicht jede App den Check vor `execute` nachbauen und dabei
-`format_status` aufrufen (siehe B1).
+Dann muss nicht jede App den Check vor `execute` nachbauen.
 
 ### E7 – Viel Boilerplate, um eine vorhandene Instanz zu injizieren
 
@@ -476,14 +461,13 @@ Felder `required`, optionale Felder als nullable).
 
 | Konzept | Aktuelle Namen | Vorschlag |
 |---|---|---|
-| Gruppe von Methoden-Tools | `AgentToolset`, „plugin“ (`plugins.py`, `plugin_name`, `add_plugin(name=)`, „Plugin tool … must be …“, „Plugin 'x' is already registered“, `_reject_plugin_method_injection`) | durchgehend **toolset** + **namespace**; `add_plugin` entfernen, `Tool.plugin_name` → `Tool.namespace`, `plugins.py` → `decorators.py` |
+| Gruppe von Methoden-Tools | `Toolset`, „plugin“ (`plugins.py`, `plugin_name`, `add_plugin(name=)`, „Plugin tool … must be …“, „Plugin 'x' is already registered“, `_reject_plugin_method_injection`) | durchgehend **toolset** + **namespace**; `add_plugin` entfernen, `Tool.plugin_name` → `Tool.namespace`, `plugins.py` → `decorators.py` |
 | Params-Model | Decorator `params=`, `Tool(param_model=)`, `tool.input_model`, `build_schema(param_model=)` | einheitlich `params_model` bzw. `params=` |
 | JSON-Schema | `tool.parameters`, `ToolSchema.parameters`, Anthropic `input_schema` | `tool.input_schema` (passt zu Anthropic/MCP) |
-| Argumente | `ToolCall.raw_args`, `execute(arguments=)`, `format_status(args)` | überall `arguments` |
-| Zusatzdaten | Decorator `metadata=`, Attribut `tool.extra`, Klasse `ToolMetadata` (enthält status/tags/extra) | Decorator `extra=` **oder** Attribut `tool.metadata`, aber nicht beides |
+| Argumente | `ToolCall.raw_args`, `execute(arguments=)` | überall `arguments` |
+| Zusatzdaten | Decorator `metadata=`, Attribut `tool.extra`, Klasse `ToolMetadata` (enthält tags/extra) | Decorator `extra=` **oder** Attribut `tool.metadata`, aber nicht beides |
 | „provide“ | `@provide` (Factory), `DependencyProvider` (Klasse), `ToolContext.provide()` (Werte hinzufügen), `provided()` (Availability) | vier Bedeutungen für ein Wort. Vorschlag: `@provides`, `ToolContext.with_()`, `requires()` |
 | Kürzen | `OutputBudget.shape()` | `apply()` / `truncate()` / `__call__` |
-| Basisklasse | `AgentToolset` neben `Toolbox`, `ToolContext`, … | `Toolset` (das „Agent“-Präfix kommt sonst nirgends vor) |
 | Format-Enum | `ToolSchemaFormat.NATIVE` | wird mit E3 überflüssig |
 
 Weitere Kleinigkeiten:
@@ -492,8 +476,6 @@ Weitere Kleinigkeiten:
   verfügbar ist, „Unknown tool“. Für das LLM ist das in Ordnung, beim Debuggen
   irritiert es. Ein Log-Eintrag auf DEBUG-Level mit dem echten Grund würde
   helfen.
-- Der Testname `test_status_rejects_empty_tool_name`
-  (`tests/tools/test_behaviors.py:245`) passt nicht zu dem, was getestet wird.
 - Die Model-Namen entstehen per `function_name.title()`, aus `get_HTTP` wird
   `Get_Http` → `GetHttpParams`. Rein kosmetisch, landet aber im Schema-`title`.
 
@@ -546,7 +528,7 @@ Weitere Kleinigkeiten:
 ## 7. Empfohlene Reihenfolge
 
 **Schnell erledigt (je unter einer Stunde):**
-B1 · B5 · B6 · B8 · B12 · B13 · B14 · B15 · README/experiments-README
+B5 · B6 · B8 · B12 · B13 · B14 · B15 · README/experiments-README
 aufräumen · `name` nur als Keyword (E11)
 
 **Kurzfristig (nächster Minor):**

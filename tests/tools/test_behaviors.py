@@ -30,7 +30,7 @@ class OtherService:
     pass
 
 
-class StatusParams(BaseModel):
+class ItemParams(BaseModel):
     item: str
     count: int | None = None
 
@@ -218,31 +218,7 @@ async def test_registry_context_can_be_set_after_creation() -> None:
     assert toolbox.get_schema() == []
 
 
-def test_status_supports_plain_strings_and_callables() -> None:
-    literal_tool = Tool(
-        "literal",
-        "Literal status",
-        lambda params: None,
-        param_model=StatusParams,
-        metadata=ToolMetadata(status="Processing"),
-    )
-    callable_tool = Tool(
-        "callable",
-        "Callable status",
-        lambda params: None,
-        param_model=StatusParams,
-        metadata=ToolMetadata(status=lambda params: f"{params.item}:{params.count}"),
-    )
-
-    assert literal_tool.format_status(StatusParams(item="document", count=2)) == (
-        "Processing"
-    )
-    assert callable_tool.format_status({"item": "document", "count": 2}) == (
-        "document:2"
-    )
-
-
-def test_status_rejects_empty_tool_name() -> None:
+def test_tool_rejects_empty_name() -> None:
     with pytest.raises(ValueError, match="cannot be empty"):
         Tool("", "Missing name", lambda: None)
 
@@ -283,7 +259,7 @@ def test_callable_schema_rejects_variadics_and_requires_input() -> None:
     with pytest.raises(ValueError, match="callable or param_model"):
         build_schema()
 
-    def variadic_model(params: StatusParams, *values: str) -> None:
+    def variadic_model(params: ItemParams, *values: str) -> None:
         pass
 
     with pytest.raises(TypeError, match="cannot use variadic parameters"):
@@ -294,7 +270,7 @@ def test_callable_schema_rejects_variadics_and_requires_input() -> None:
 async def test_param_model_binding_must_be_unambiguous() -> None:
     toolbox = Toolbox(middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware()))
 
-    @toolbox.tool("Ambiguous", params=StatusParams)
+    @toolbox.tool("Ambiguous", params=ItemParams)
     def ambiguous(first: object, second: object) -> None:
         pass
 

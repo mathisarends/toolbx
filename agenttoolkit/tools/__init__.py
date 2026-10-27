@@ -19,10 +19,9 @@ from .plugins import tool
 from .registry import ToolRegistry
 from .schema import ToolSchema, build_schema
 from .toolbox import Toolbox
-from .toolset import AgentToolset
+from .toolset import Toolset
 
 __all__ = [
-    "AgentToolset",
     "CallLoggingMiddleware",
     "DependencyProvider",
     "ErrorBoundaryMiddleware",
@@ -38,6 +37,7 @@ __all__ = [
     "ToolSchema",
     "ToolSchemaFormat",
     "Toolbox",
+    "Toolset",
     "build_schema",
     "description_from_context",
     "provide",

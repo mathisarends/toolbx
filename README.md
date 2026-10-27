@@ -104,16 +104,16 @@ name.
 
 ## Grouping tools in toolsets
 
-For larger applications, group related tools in an `AgentToolset` subclass and
+For larger applications, group related tools in a `Toolset` subclass and
 inject stable application services through its constructor. The `@tool`
 decorator marks methods without registering them; `Toolbox` registers all marked
 methods of an instance together:
 
 ```python
-from agenttoolkit import AgentToolset, Toolbox, tool
+from agenttoolkit import Toolset, Toolbox, tool
 
 
-class CatalogTools(AgentToolset):
+class CatalogTools(Toolset):
     def __init__(self, catalog: CatalogService) -> None:
         self._catalog = catalog
 
@@ -137,7 +137,7 @@ toolbox.add(ShellTools(sandbox), exclude={"kill"})
 The namespace prefixes every exposed method: the example registers
 `catalog_search` and `catalog_get`. It defaults to the snake_case class name
 without a `Tools`, `Toolbox`, `Toolset` or `Plugin` suffix. Set it with a class keyword
-(`class CatalogTools(AgentToolset, namespace="shop")`), or use
+(`class CatalogTools(Toolset, namespace="shop")`), or use
 `namespace=None` to expose the local names unprefixed. Pass `namespace=` to
 `toolbox.add(...)` to register a second instance of the same class.
 `include=` and `exclude=` select tools by their local name; unknown names are
@@ -153,7 +153,7 @@ Toolsets are fully constructed by the application and are not connected to the
 dependency container. Their methods contain only model-facing parameters;
 `Inject[T]` is intentionally rejected there. The application's composition root
 owns the toolset, its dependencies, and their lifecycle. Objects which do not
-inherit from `AgentToolset` can still be registered with
+inherit from `Toolset` can still be registered with
 `toolbox.add(obj, namespace="name")` or `toolbox.add_plugin(obj, name="name")`.
 See the runnable [`class_based_plugins.py`](examples/class_based_plugins.py)
 example for the complete setup.
@@ -167,9 +167,6 @@ Schema:
 ```python
 @toolbox.tool(
     "Issue a refund for an order.",
-    status=lambda params: (
-        f"Refunding {params.amount} for order {params.order_id}..."
-    ),
     tags=["billing", "write"],
     requires_approval=True,
     metadata={"owner": "billing-team"},
@@ -177,10 +174,6 @@ Schema:
 def refund(params: RefundParams) -> str: ...
 ```
 
-- `status` — a human-readable status message, either a plain string or a
-  callable taking the parsed params. Prefer a callable: the parameter type
-  is inferred from `params`, giving type checking and IDE navigation.
-  Render it with `tool.format_status(args)`.
 - `tags` — a `frozenset[str]` for grouping or filtering tools, readable as
   `tool.tags`.
 - `metadata` — an arbitrary read-only mapping for anything else the host
@@ -194,8 +187,6 @@ tool = toolbox.get("refund")
 tool.tags                # frozenset({"billing", "write"})
 tool.extra["owner"]      # "billing-team"
 tool.requires_approval   # True
-tool.format_status({"order_id": "o-123", "amount": 20.0})
-# "Refunding 20.0 for order o-123..."
 ```
 
 ## Driving an agent loop
@@ -214,15 +205,13 @@ result = await toolbox.execute("search", {"query": "tool middleware"}, context=c
 Code that only registers or executes tools, independent of how they are shown
 to a model, can accept the shared `ToolRegistry` type.
 
-A typical loop confirms approval-gated tools before executing, and reports
-status while a call is in flight:
+A typical loop confirms approval-gated tools before executing:
 
 ```python
 tool = toolbox.get(name)
 if tool is not None and tool.requires_approval and not confirm(name, arguments):
     result = "Tool failed: Declined by user"
 else:
-    print(tool.format_status(arguments) if tool else name)
     result = await toolbox.execute(name, arguments, context=context)
 ```
 
@@ -496,10 +485,7 @@ toolbox = Toolbox(
 )
 
 
-@toolbox.tool(
-    "Search the connected knowledge base.",
-    status=lambda params: f"Searching for {params.query}...",
-)
+@toolbox.tool("Search the connected knowledge base.")
 async def search(params: SearchParams, client: Inject[SearchClient]) -> list[str]:
     return await client.search(params.query, params.limit)
 
@@ -699,9 +685,9 @@ The complete list of what the toolkit provides:
 
 - Registration through a `@toolbox.tool` decorator — no hand-written JSON
   Schema, for either plain function signatures or Pydantic models.
-- Runtime metadata (`effects`, `status`, `tags`, custom fields) and an
-  `requires_approval` flag, kept out of the model-facing schema but readable
-  by the host loop that dispatches calls.
+- Runtime metadata (`tags`, custom fields) and a `requires_approval` flag,
+  kept out of the model-facing schema but readable by the host loop that
+  dispatches calls.
 - Singleton dependency injection (`Inject[T]`) with validated dependency
   graphs and application-owned resource lifecycles.
 - Conditional tool availability and dynamic, context-aware descriptions.

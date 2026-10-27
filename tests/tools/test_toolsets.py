@@ -1,6 +1,6 @@
 import pytest
 
-from agenttoolkit import AgentToolset, Toolbox, tool
+from agenttoolkit import Toolbox, Toolset, tool
 
 
 class CatalogService:
@@ -8,7 +8,7 @@ class CatalogService:
         self.name = name
 
 
-class CatalogTools(AgentToolset):
+class CatalogTools(Toolset):
     def __init__(self, catalog: CatalogService) -> None:
         self._catalog = catalog
 
@@ -51,16 +51,16 @@ async def test_toolset_uses_default_namespace_and_constructor_dependencies() -> 
 def test_default_namespace_is_snake_case_without_suffix(
     class_name: str, expected: str
 ) -> None:
-    toolset = type(class_name, (AgentToolset,), {})
+    toolset = type(class_name, (Toolset,), {})
 
     assert toolset.namespace == expected
 
 
 def test_namespace_class_argument_overrides_default() -> None:
-    class Anything(AgentToolset, namespace="custom"):
+    class Anything(Toolset, namespace="custom"):
         pass
 
-    class Unprefixed(AgentToolset, namespace=None):
+    class Unprefixed(Toolset, namespace=None):
         pass
 
     assert Anything.namespace == "custom"
@@ -68,7 +68,7 @@ def test_namespace_class_argument_overrides_default() -> None:
 
 
 def test_toolset_without_namespace_exposes_local_names() -> None:
-    class Unprefixed(AgentToolset, namespace=None):
+    class Unprefixed(Toolset, namespace=None):
         @tool("Ping")
         def ping(self) -> str:
             return "pong"
@@ -105,14 +105,14 @@ def test_second_instance_without_namespace_is_rejected_with_hint() -> None:
 def test_invalid_namespace_is_rejected_at_class_definition() -> None:
     with pytest.raises(ValueError, match="Namespace must contain"):
 
-        class Invalid(AgentToolset, namespace="not valid"):
+        class Invalid(Toolset, namespace="not valid"):
             pass
 
 
 def test_duplicate_tool_names_are_rejected_at_class_definition() -> None:
     with pytest.raises(ValueError, match="duplicate tool 'same'"):
 
-        class Duplicate(AgentToolset):
+        class Duplicate(Toolset):
             @tool("First", name="same")
             def first(self) -> None:
                 pass
@@ -125,7 +125,7 @@ def test_duplicate_tool_names_are_rejected_at_class_definition() -> None:
 def test_invalid_tool_methods_are_rejected_at_class_definition() -> None:
     with pytest.raises(TypeError, match="must be an instance method"):
 
-        class Invalid(AgentToolset):
+        class Invalid(Toolset):
             @classmethod
             @tool("Invalid")
             def invalid(cls) -> None:
@@ -133,7 +133,7 @@ def test_invalid_tool_methods_are_rejected_at_class_definition() -> None:
 
 
 def test_subclass_override_replaces_inherited_tool() -> None:
-    class Base(AgentToolset, namespace="base"):
+    class Base(Toolset, namespace="base"):
         @tool("Base search")
         def search(self) -> str:
             return "base"
@@ -186,12 +186,12 @@ def test_collisions_name_every_conflict_and_leave_registry_unchanged() -> None:
 
 
 def test_collision_between_toolsets_names_the_existing_toolset() -> None:
-    class First(AgentToolset, namespace=None):
+    class First(Toolset, namespace=None):
         @tool("Ping")
         def ping(self) -> None:
             pass
 
-    class Second(AgentToolset, namespace=None):
+    class Second(Toolset, namespace=None):
         @tool("Ping")
         def ping(self) -> None:
             pass
@@ -204,7 +204,7 @@ def test_collision_between_toolsets_names_the_existing_toolset() -> None:
 
 
 def test_constructor_registers_toolsets_in_order() -> None:
-    class Files(AgentToolset):
+    class Files(Toolset):
         @tool("Read")
         def read(self) -> None:
             pass

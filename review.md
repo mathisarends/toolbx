@@ -7,7 +7,5 @@ gelöscht; verbleibende IDs bleiben stabil.
 
 ## Doku und Repo
 
-- `Agents.md` und `Claude.md` enthalten fast dieselben Konventionen. Eine
-  Quelle reicht, die andere kann darauf verweisen.
 - `pyproject.toml`: Classifiers (inkl. `Typing :: Typed`) und
   `[project.urls]` fehlen.

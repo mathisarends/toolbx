@@ -1,4 +1,4 @@
-# Conventions
+# Repository conventions
 
 - The project supports Python 3.13-3.14. Always add
   `from __future__ import annotations` to modules that use forward

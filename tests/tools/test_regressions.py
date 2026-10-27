@@ -144,3 +144,12 @@ def test_variadic_toolset_methods_fail_at_class_definition(
             @tool("Invalid", params=Params if explicit_params else None)
             def invalid(self, *values: str) -> None:
                 pass
+
+
+def test_unannotated_signature_parameter_is_rejected_with_its_name() -> None:
+    with pytest.raises(TypeError, match="parameter 'value' requires a type annotation"):
+
+        class Invalid(Toolset):
+            @tool("Invalid")
+            def invalid(self, value) -> None:
+                pass

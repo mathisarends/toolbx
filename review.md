@@ -50,12 +50,6 @@ weil Groß- und Kleinschreibung zählt.
 **Fix:** Overloads mit `Literal[ToolSchemaFormat.OPENAI, "openai"]` usw.
 schreiben, oder besser getrennte Methoden anbieten (siehe E3).
 
-### B17 – Parameter ohne Annotation werden still zu `str` · niedrig · bestätigt
-
-`hints.get(name, str)` (`schema.py:87`): `def u(x)` erzeugt
-`{"type": "string"}`, und `execute("u", {"x": 5})` scheitert. Besser ist
-`Any` oder ein klarer Fehler bei der Registrierung.
-
 ---
 
 ## 2. Dinge, die in der Praxis schieflaufen können
@@ -273,7 +267,7 @@ Die neue API für Availability und Description vorher klären (E8).
 `name` nur als Keyword (E11)
 
 **Weitere Vereinfachungen und Validierung:**
-B10/E3 · B17/R8
+B10/E3 · R8
 (Signaturprüfung und Argumentzuordnung bei Definition bzw. Registrierung) ·
 E2 (`Toolbox` zusammenführen) · Begriffe vereinheitlichen
 (Abschnitt 4, vor allem plugin → toolset)

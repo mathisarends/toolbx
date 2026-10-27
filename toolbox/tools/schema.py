@@ -80,7 +80,11 @@ def _model_from_callable(func: Callable) -> type[BaseModel]:
     descriptions: dict[str, str] = {}
 
     for name, parameter in signature.parameters.items():
-        annotation = hints.get(name, str)
+        if name not in hints:
+            raise TypeError(
+                f"Tool '{function_name}' parameter '{name}' requires a type annotation"
+            )
+        annotation = hints[name]
         if _is_injected(annotation):
             continue
         if parameter.kind in {

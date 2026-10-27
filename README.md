@@ -13,7 +13,7 @@ it is a building block, not a framework.
 - [Installation](#installation)
 - [Quickstart](#quickstart)
 - [Defining tools](#defining-tools)
-- [Grouping tools in plugins](#grouping-tools-in-plugins)
+- [Grouping tools in toolsets](#grouping-tools-in-toolsets)
 - [Tool metadata](#tool-metadata)
 - [Driving an agent loop](#driving-an-agent-loop)
 - [Results and errors](#results-and-errors)
@@ -102,18 +102,18 @@ Use `tools.register(tool)` when you already have a `Tool` object and want to
 register it imperatively. Pass `replace=True` to replace a tool with the same
 name.
 
-## Grouping tools in plugins
+## Grouping tools in toolsets
 
-For larger applications, group related tools in a class and inject stable
-application services through its constructor. The module-level `@tool`
-decorator marks methods without registering them; `add_plugin` registers all
-marked methods together:
+For larger applications, group related tools in an `AgentToolset` subclass and
+inject stable application services through its constructor. The `@tool`
+decorator marks methods without registering them; `Tools` registers all marked
+methods of an instance together:
 
 ```python
-from agenttoolkit import Tools, tool
+from agenttoolkit import AgentToolset, Tools, tool
 
 
-class CatalogPlugin:
+class CatalogTools(AgentToolset):
     def __init__(self, catalog: CatalogService) -> None:
         self._catalog = catalog
 
@@ -121,7 +121,7 @@ class CatalogPlugin:
     async def search(self, query: str, limit: int = 10) -> list[Product]:
         return await self._catalog.search(query, limit=limit)
 
-    @tool("Get one product")
+    @tool("Get one product", name="get")
     async def get_product(self, product_id: str) -> Product:
         return await self._catalog.get(product_id)
 
@@ -130,22 +130,33 @@ class CatalogPlugin:
         return " ".join(query.split())
 
 
-tools = Tools()
-tools.add_plugin(CatalogPlugin(catalog_service), name="catalog")
+tools = Tools(CatalogTools(catalog_service), FilesTools(filesystem))
+tools.add(ShellTools(sandbox), exclude={"kill"})
 ```
 
-The plugin name namespaces every exposed method: the example registers
-`catalog_search` and `catalog_get_product`. Each registered descriptor retains
-its `plugin_name` and local `local_name`. Plugins are fully constructed by the
-application and are not connected to the dependency container. Plugin methods
-contain only model-facing parameters; `Inject[T]` is intentionally rejected
-there.
+The namespace prefixes every exposed method: the example registers
+`catalog_search` and `catalog_get`. It defaults to the snake_case class name
+without a `Tools`, `Toolset` or `Plugin` suffix. Set it with a class keyword
+(`class CatalogTools(AgentToolset, namespace="shop")`), or use
+`namespace=None` to expose the local names unprefixed. Pass `namespace=` to
+`tools.add(...)` to register a second instance of the same class.
+`include=` and `exclude=` select tools by their local name; unknown names are
+rejected.
 
-Plugin registration is atomic. Invalid methods or name collisions leave the
-registry unchanged. The application's composition root owns the plugin,
-its dependencies, and their lifecycle. See the runnable
-[`class_based_plugins.py`](examples/class_based_plugins.py) example for the
-complete setup.
+Mistakes surface as early as possible. Invalid or duplicate tool names and
+`classmethod`/`staticmethod` tools raise when the class is defined. Name
+collisions are reported when a toolset is added, listing every conflicting tool
+and the toolset which already owns it. Registration is atomic: a failure leaves
+the registry unchanged.
+
+Toolsets are fully constructed by the application and are not connected to the
+dependency container. Their methods contain only model-facing parameters;
+`Inject[T]` is intentionally rejected there. The application's composition root
+owns the toolset, its dependencies, and their lifecycle. Objects which do not
+inherit from `AgentToolset` can still be registered with
+`tools.add(obj, namespace="name")` or `tools.add_plugin(obj, name="name")`.
+See the runnable [`class_based_plugins.py`](examples/class_based_plugins.py)
+example for the complete setup.
 
 ## Tool metadata
 

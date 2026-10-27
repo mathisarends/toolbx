@@ -1,11 +1,11 @@
-"""Group LLM tools in an externally constructed plugin instance."""
+"""Group LLM tools in an externally constructed AgentToolset instance."""
 
 import asyncio
 from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
 
-from agenttoolkit import Tools, tool
+from agenttoolkit import AgentToolset, Tools, tool
 
 
 @dataclass(frozen=True)
@@ -34,7 +34,7 @@ class SearchParams(BaseModel):
     limit: int = Field(default=5, ge=1, le=20)
 
 
-class CatalogPlugin:
+class CatalogTools(AgentToolset):
     """The LLM presentation layer in front of CatalogService."""
 
     def __init__(self, catalog: CatalogService) -> None:
@@ -64,10 +64,9 @@ async def main() -> None:
             Product("p-3", "USB-C Dock"),
         ]
     )
-    tools = Tools()
-    tools.add_plugin(CatalogPlugin(catalog), name="catalog")
+    tools = Tools(CatalogTools(catalog))
 
-    # The plugin namespace becomes part of each model-facing tool name.
+    # The toolset namespace becomes part of each model-facing tool name.
     print([schema.name for schema in tools.get_schema()])
 
     print(

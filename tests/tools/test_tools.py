@@ -99,10 +99,6 @@ def test_schema_is_provider_neutral_with_adapters() -> None:
     assert openai["function"]["name"] == "search"
     assert anthropic["input_schema"] == native.parameters
     assert toolbox.get("search").to_openai_schema() == openai
-    assert toolbox.get("search").parse_arguments('{"query": "docs"}') == {
-        "query": "docs",
-        "limit": 10,
-    }
 
 
 def test_annotated_description_is_included_in_callable_schema() -> None:

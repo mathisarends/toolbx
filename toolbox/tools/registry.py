@@ -224,7 +224,7 @@ class ToolRegistry:
 
         params = tool.input_model.model_validate(call.raw_args)
         arguments = await resolve_arguments(tool, params, call.container, call.context)
-        return await tool.execute(arguments)
+        return await tool._invoke(arguments)
 
 
 def _select_entries(

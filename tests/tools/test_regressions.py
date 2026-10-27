@@ -1,4 +1,5 @@
 import pytest
+from pydantic import BaseModel
 
 from toolbox import Toolbox, ToolSchemaFormat, Toolset, tool
 
@@ -96,3 +97,21 @@ async def test_bound_methods_keep_regular_parameters_named_cls_and_self() -> Non
         "news:hello"
     )
     assert await toolbox.execute("echo", {"self": "hello"}) == "hello"
+
+
+@pytest.mark.asyncio
+async def test_params_model_and_nested_models_reach_the_method_as_models() -> None:
+    class Item(BaseModel):
+        value: int
+
+    class Params(BaseModel):
+        item: Item
+
+    class Models(Toolset, namespace=None):
+        @tool("Read nested model", params=Params)
+        def read(self, params: Params) -> int:
+            assert isinstance(params, Params)
+            assert isinstance(params.item, Item)
+            return params.item.value
+
+    assert await Toolbox(Models()).execute("read", {"item": {"value": "7"}}) == 7

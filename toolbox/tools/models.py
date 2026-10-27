@@ -1,5 +1,4 @@
 import inspect
-import json
 from collections.abc import Callable, Mapping
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -102,12 +101,7 @@ class Tool:
     ) -> dict[str, Any]:
         return self.to_schema(context).to_anthropic_schema()
 
-    def parse_arguments(self, arguments: str) -> dict[str, Any]:
-        raw_arguments = json.loads(arguments)
-        params = self.input_model.model_validate(raw_arguments)
-        return params.model_dump(mode="python")
-
-    async def execute(self, arguments: dict[str, Any]) -> object:
+    async def _invoke(self, arguments: dict[str, Any]) -> object:
         result = self.fn(**arguments)
         return await result if inspect.isawaitable(result) else result
 

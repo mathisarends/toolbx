@@ -39,24 +39,6 @@ oder entfallene Punkte werden gelöscht; verbleibende IDs bleiben stabil.
 
 ## 1. Bugs
 
-### B9 – `Tool.parse_arguments` und `Tool.execute` passen nicht zusammen · mittel · bestätigt
-
-`parse_arguments` liefert `model_dump(...)`, also Dicts. `execute` ruft die
-rohe Funktion mit `**arguments` auf. Bei Tools mit Params-Model kommt dabei
-heraus:
-
-```
-TypeError: search() got an unexpected keyword argument 'q'
-```
-
-Bei verschachtelten Models bekommt die Funktion außerdem Dicts statt
-Model-Instanzen. Dazu kommt: `Tool.execute` umgeht Validierung und
-Middleware, heißt aber genauso wie `Toolbox.execute`. Das ist eine Falle.
-
-**Fix:** `parse_arguments` und `Tool.execute` entfernen oder privat machen
-(`parse_arguments` wird nirgends genutzt). Im kanonischen Toolset-Weg ist
-`Toolbox.execute` der einzige öffentliche Ausführungsweg.
-
 ### B10 – Falsche Overloads bei `get_schema` · mittel
 
 `toolbox.py:12-18`: Der erste Overload nimmt **jeden** `ToolSchemaFormat` an und
@@ -307,7 +289,7 @@ Die neue API für Availability und Description vorher klären (E8).
 B14 · `name` nur als Keyword (E11)
 
 **Weitere Vereinfachungen und Validierung:**
-B9 · B10/E3 · B16/B17/R8
+B10/E3 · B16/B17/R8
 (Signaturprüfung und Argumentzuordnung bei Definition bzw. Registrierung) ·
 E2 (`Toolbox` zusammenführen) · Begriffe vereinheitlichen
 (Abschnitt 4, vor allem plugin → toolset)

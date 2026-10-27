@@ -1,6 +1,7 @@
 import pytest
 
 from toolbox import Toolbox, Toolset, tool
+from toolbox import tool as mark_tool
 
 
 class CatalogService:
@@ -24,9 +25,7 @@ class CatalogTools(Toolset):
 @pytest.mark.asyncio
 async def test_toolset_uses_default_namespace_and_constructor_dependencies() -> None:
     toolbox = Toolbox()
-
     toolbox.add(CatalogTools(CatalogService("docs")))
-
     assert [schema.name for schema in toolbox.schemas()] == [
         "catalog_search",
         "catalog_get",
@@ -41,7 +40,7 @@ async def test_toolset_uses_default_namespace_and_constructor_dependencies() -> 
         ("CatalogTools", "catalog"),
         ("CatalogToolset", "catalog"),
         ("CatalogToolbox", "catalog"),
-        ("CatalogPlugin", "catalog"),
+        ("CatalogPlugin", "catalog_plugin"),
         ("Catalog", "catalog"),
         ("FileSystemTools", "file_system"),
         ("HTTPClientTools", "http_client"),
@@ -52,11 +51,11 @@ def test_default_namespace_is_snake_case_without_suffix(
     class_name: str, expected: str
 ) -> None:
     toolset = type(class_name, (Toolset,), {})
-
     assert toolset.namespace == expected
 
 
 def test_namespace_class_argument_overrides_default() -> None:
+
     class Anything(Toolset, namespace="custom"):
         pass
 
@@ -68,6 +67,7 @@ def test_namespace_class_argument_overrides_default() -> None:
 
 
 def test_toolset_without_namespace_exposes_local_names() -> None:
+
     class Unprefixed(Toolset, namespace=None):
         @tool("Ping")
         def ping(self) -> str:
@@ -75,16 +75,13 @@ def test_toolset_without_namespace_exposes_local_names() -> None:
 
     toolbox = Toolbox()
     toolbox.add(Unprefixed())
-
     assert [item.name for item in toolbox] == ["ping"]
 
 
 def test_namespace_can_be_overridden_per_instance() -> None:
     toolbox = Toolbox()
-
     toolbox.add(CatalogTools(CatalogService("docs")))
     toolbox.add(CatalogTools(CatalogService("archive")), namespace="archive")
-
     assert [item.name for item in toolbox] == [
         "catalog_search",
         "catalog_get",
@@ -96,7 +93,6 @@ def test_namespace_can_be_overridden_per_instance() -> None:
 def test_second_instance_without_namespace_is_rejected_with_hint() -> None:
     toolbox = Toolbox()
     toolbox.add(CatalogTools(CatalogService("docs")))
-
     with pytest.raises(ValueError, match="pass namespace= to register another"):
         toolbox.add(CatalogTools(CatalogService("archive")))
     assert len(toolbox) == 2
@@ -133,6 +129,7 @@ def test_invalid_tool_methods_are_rejected_at_class_definition() -> None:
 
 
 def test_subclass_override_replaces_inherited_tool() -> None:
+
     class Base(Toolset, namespace="base"):
         @tool("Base search")
         def search(self) -> str:
@@ -145,47 +142,37 @@ def test_subclass_override_replaces_inherited_tool() -> None:
 
     toolbox = Toolbox()
     toolbox.add(Derived())
-
     assert [item.name for item in toolbox] == ["derived_search"]
     assert toolbox.get("derived_search") is not None
-
-
-def test_plain_object_requires_explicit_namespace() -> None:
-    class Plain:
-        @tool("Ping")
-        def ping(self) -> str:
-            return "pong"
-
-    toolbox = Toolbox()
-    with pytest.raises(TypeError, match="pass namespace="):
-        toolbox.add(Plain())
-
-    toolbox.add(Plain(), namespace="plain")
-    assert [item.name for item in toolbox] == ["plain_ping"]
 
 
 def test_collisions_name_every_conflict_and_leave_registry_unchanged() -> None:
     toolbox = Toolbox()
 
-    @toolbox.tool("Existing search")
-    def catalog_search(query: str) -> str:
-        return query
+    class DefinedTools1(Toolset, namespace=None):
+        @mark_tool("Existing search")
+        def catalog_search(self, query: str) -> str:
+            return query
 
-    @toolbox.tool("Existing get")
-    def catalog_get(entry_id: str) -> str:
-        return entry_id
+    toolbox.add(DefinedTools1())
 
+    class DefinedTools2(Toolset, namespace=None):
+        @mark_tool("Existing get")
+        def catalog_get(self, entry_id: str) -> str:
+            return entry_id
+
+    toolbox.add(DefinedTools2())
     with pytest.raises(ValueError) as exc_info:
         toolbox.add(CatalogTools(CatalogService("docs")))
-
     message = str(exc_info.value)
     assert "Tool 'catalog_search' is already registered" in message
     assert "Tool 'catalog_get' is already registered" in message
-    assert "defined by a function tool" in message
+    assert "defined by DefinedTools" in message
     assert [item.name for item in toolbox] == ["catalog_search", "catalog_get"]
 
 
 def test_collision_between_toolsets_names_the_existing_toolset() -> None:
+
     class First(Toolset, namespace=None):
         @tool("Ping")
         def ping(self) -> None:
@@ -198,19 +185,18 @@ def test_collision_between_toolsets_names_the_existing_toolset() -> None:
 
     toolbox = Toolbox()
     toolbox.add(First())
-
     with pytest.raises(ValueError, match=r"'ping' is already registered.*First"):
         toolbox.add(Second())
 
 
 def test_constructor_registers_toolsets_in_order() -> None:
+
     class Files(Toolset):
         @tool("Read")
         def read(self) -> None:
             pass
 
     toolbox = Toolbox(CatalogTools(CatalogService("docs")), Files())
-
     assert [item.name for item in toolbox] == [
         "catalog_search",
         "catalog_get",
@@ -225,35 +211,28 @@ def test_constructor_rejects_colliding_toolsets() -> None:
 
 def test_include_selects_tools_by_local_name() -> None:
     toolbox = Toolbox()
-
     toolbox.add(CatalogTools(CatalogService("docs")), include={"get"})
-
     assert [item.name for item in toolbox] == ["catalog_get"]
 
 
 def test_exclude_removes_tools_by_local_name() -> None:
     toolbox = Toolbox()
-
     toolbox.add(CatalogTools(CatalogService("docs")), exclude=["get"])
-
     assert [item.name for item in toolbox] == ["catalog_search"]
 
 
 def test_include_and_exclude_combine() -> None:
     toolbox = Toolbox()
-
     toolbox.add(
         CatalogTools(CatalogService("docs")),
         include={"search", "get"},
         exclude={"search"},
     )
-
     assert [item.name for item in toolbox] == ["catalog_get"]
 
 
 def test_filters_reject_unknown_tool_names() -> None:
     toolbox = Toolbox()
-
     with pytest.raises(ValueError, match="no tools named delete, purge"):
         toolbox.add(CatalogTools(CatalogService("docs")), exclude={"purge", "delete"})
     assert len(toolbox) == 0

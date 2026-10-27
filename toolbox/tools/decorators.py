@@ -7,38 +7,36 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from toolbox.tools.binding import ToolAvailability, ToolDescription
-
 _TOOL_DEFINITION_ATTRIBUTE = "__toolbox_tool_definition__"
 
 
 @dataclass(frozen=True, slots=True)
 class ToolDefinition:
-    """Metadata attached to a method before its plugin is registered."""
+    """Metadata attached to a method before its toolset is registered."""
 
-    description: str | ToolDescription | None
+    description: str | None
     name: str | None
     params: type[BaseModel] | None
     requires_approval: bool
-    available_when: ToolAvailability | None
+    available_when: Callable[[Any], bool] | None
     tags: tuple[str, ...]
     metadata: Mapping[str, Any]
 
 
 def tool[ParamsT: BaseModel, **CallT, ResultT](
-    description: str | ToolDescription | None = None,
+    description: str | None = None,
     name: str | None = None,
     *,
     params: type[ParamsT] | None = None,
     requires_approval: bool = False,
-    available_when: ToolAvailability | None = None,
+    available_when: Callable[[Any], bool] | None = None,
     tags: Sequence[str] = (),
     metadata: Mapping[str, Any] | None = None,
 ) -> Callable[
     [Callable[CallT, ResultT]],
     Callable[CallT, ResultT],
 ]:
-    """Mark an instance method for registration as part of a plugin."""
+    """Mark an instance method for registration as part of a toolset."""
 
     definition = ToolDefinition(
         description=description,

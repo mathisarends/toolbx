@@ -4,8 +4,6 @@ from typing import Annotated, Any, get_args, get_origin, get_type_hints
 
 from pydantic import BaseModel, ConfigDict, create_model
 
-from toolbox.tools.context import _INJECT_MARKER
-
 
 class ToolSchema(BaseModel):
     name: str
@@ -59,8 +57,7 @@ def _infer_param_model(func: Callable) -> type[BaseModel] | None:
         }:
             return None
         annotation = hints.get(name)
-        if not _is_injected(annotation):
-            candidates.append(annotation)
+        candidates.append(annotation)
 
     if len(candidates) != 1:
         return None
@@ -85,8 +82,6 @@ def _model_from_callable(func: Callable) -> type[BaseModel]:
                 f"Tool '{function_name}' parameter '{name}' requires a type annotation"
             )
         annotation = hints[name]
-        if _is_injected(annotation):
-            continue
         if parameter.kind in {
             inspect.Parameter.VAR_POSITIONAL,
             inspect.Parameter.VAR_KEYWORD,
@@ -110,12 +105,6 @@ def _model_from_callable(func: Callable) -> type[BaseModel]:
         model.model_fields[name].description = description
     model.model_rebuild(force=True)
     return model
-
-
-def _is_injected(annotation: Any) -> bool:
-    return get_origin(annotation) is Annotated and _INJECT_MARKER in get_args(
-        annotation
-    )
 
 
 def _annotated_description(annotation: Any) -> str | None:

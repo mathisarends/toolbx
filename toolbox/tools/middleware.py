@@ -4,8 +4,6 @@ from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from toolbox.dependency import DependencyContainer
-from toolbox.tools.context import ToolContext
 from toolbox.tools.models import Tool
 
 logger = logging.getLogger(__name__)
@@ -24,9 +22,7 @@ class ToolRequest:
 class ToolCall:
     name: str
     raw_args: dict[str, Any]
-    context: ToolContext | None = None
     tool: Tool | None = None
-    container: DependencyContainer | None = None
     call_id: str | None = None
 
 

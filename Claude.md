@@ -5,8 +5,8 @@
   references (e.g. a class referencing its own name, or names defined later
   in the file), since lazy annotation evaluation (PEP 649) is only native to
   3.14+ and 3.13 will raise `NameError` at import time otherwise.
-- Use absolute imports (`from toolbox.tools.context import ToolContext`),
-  not relative imports (`from .context import ToolContext`). The one
+- Use absolute imports (`from toolbox.tools.models import Tool`),
+  not relative imports (`from .models import Tool`). The one
   exception is `__init__.py` files, which use relative imports to re-export
   their package's public API.
 - No comments or docstrings that just restate what the code does. Only write

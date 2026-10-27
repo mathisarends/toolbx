@@ -5,7 +5,7 @@ from typing import Any
 from llmify import RetryableError, RetryEvent
 
 from experiments.agent import Agent
-from toolbox.tools import Toolbox, ToolContext
+from toolbox.tools import Toolbox
 
 # Second line of defence behind llmify's own retries: those cover a burst of a
 # few seconds, these cover an outage that lasts minutes.
@@ -18,11 +18,8 @@ class Console:
     def __init__(
         self,
         toolbox: Toolbox,
-        *,
-        context: ToolContext | None = None,
     ) -> None:
         self._toolbox = toolbox
-        self._context = context
 
     def on_tool_call(self, name: str, arguments: dict[str, Any]) -> None:
         print(f"  -> {name}({arguments})")
@@ -45,9 +42,9 @@ class Console:
         return answer.strip().lower() == "y"
 
     def print_tools(self) -> None:
-        print("Registered tools (available in current context):")
+        print("Available tools:")
         for tool in self._toolbox:
-            if not tool.is_available(self._context):
+            if not tool.is_available():
                 continue
             flags = []
             if tool.requires_approval:
@@ -55,10 +52,7 @@ class Console:
             if tool.available_when is not None:
                 flags.append("gated")
             flag_text = f" [{', '.join(flags)}]" if flags else ""
-            print(
-                f"  - {tool.name}: "
-                f"{tool.resolve_description(self._context)}{flag_text}"
-            )
+            print(f"  - {tool.name}: {tool.description}{flag_text}")
         print()
 
     async def run(

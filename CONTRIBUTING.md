@@ -28,8 +28,8 @@ a change that only works on one of those versions isn't done.
   later in the file) needs `from __future__ import annotations` at the
   top. This isn't needed on 3.14 (PEP 649), but the project supports both,
   so add it whenever it would matter on 3.13.
-- Use absolute imports (`from toolbox.tools.context import
-  ToolContext`), not relative imports — except in `__init__.py` files,
+- Use absolute imports (`from toolbox.tools.models import
+  Tool`), not relative imports — except in `__init__.py` files,
   which use relative imports to re-export their package's public API.
 - Don't add comments or docstrings that just restate what the code already
   says. Only write one when it explains something a reader couldn't get
@@ -43,5 +43,5 @@ a change that only works on one of those versions isn't done.
 ## Reporting issues
 
 Open a GitHub issue with a minimal reproduction. For bugs, include the
-Python version and the smallest `Toolbox`/`Tool` setup that reproduces the
+Python version and the smallest `Toolbox`/`Toolset` setup that reproduces the
 problem.

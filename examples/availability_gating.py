@@ -1,44 +1,26 @@
 import asyncio
-from dataclasses import dataclass
 
-from toolbox import Toolbox, ToolContext, provided, requires
-
-
-@dataclass
-class UserInfo:
-    name: str
-    is_admin: bool = False
+from toolbox import Toolbox, Toolset, tool
 
 
-toolbox = Toolbox(context=ToolContext(UserInfo(name="Mathis")))
+class AdminTools(Toolset, namespace=None):
+    def __init__(self, *, enabled: bool = False) -> None:
+        self.enabled = enabled
 
-
-has_user = provided(UserInfo)
-is_admin = requires(UserInfo, predicate=lambda user: user.is_admin)
-
-
-@toolbox.tool("Get personalized settings", available_when=has_user)
-def get_settings() -> str:
-    return "settings"
-
-
-# `~`, `&` and `|` combine availabilities, e.g. `has_user & ~is_admin`.
-@toolbox.tool("Delete a user account (admin only)", available_when=is_admin)
-def delete_account() -> str:
-    return "account deleted"
-
-
-def tool_names(context: ToolContext | None = None) -> list[str]:
-    return [schema.name for schema in toolbox.schemas(context=context)]
+    @tool("Reset the counter", available_when=lambda self: self.enabled)
+    def reset(self) -> str:
+        return "counter reset"
 
 
 async def main() -> None:
-    # The registry context set at construction time.
-    print("regular user:", tool_names())
-
-    # A per-call context overrides it without mutating the registry.
-    print("no context:", tool_names(ToolContext()))
-    print("admin:", tool_names(ToolContext(UserInfo(name="Mathis", is_admin=True))))
+    tools = AdminTools()
+    toolbox = Toolbox(tools)
+    print("disabled:", [schema.name for schema in toolbox.schemas()])
+    tools.enabled = True
+    print("enabled:", [schema.name for schema in toolbox.schemas()])
+    print(await toolbox.execute("reset"))
+    tools.enabled = False
+    print("disabled again:", [schema.name for schema in toolbox.schemas()])
 
 
 if __name__ == "__main__":

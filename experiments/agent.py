@@ -1,3 +1,4 @@
+import asyncio
 import json
 from collections.abc import Callable
 from typing import Any
@@ -86,28 +87,42 @@ class Agent:
             if not completion.tool_calls:
                 return completion.completion
 
-            for call in completion.tool_calls:
-                arguments = json.loads(call.function.arguments or "{}")
-                if self._on_tool_call:
-                    self._on_tool_call(call.function.name, arguments)
-
-                tool = self._toolbox.get(call.function.name)
-                if (
-                    tool is not None
-                    and tool.requires_approval
-                    and self._confirm is not None
-                    and not self._confirm(call.function.name, arguments)
-                ):
-                    result = "Tool failed: Declined by user"
-                else:
-                    result = await self._toolbox.execute(call.function.name, arguments)
-
+            results = await asyncio.gather(
+                *(self._run_tool_call(call) for call in completion.tool_calls)
+            )
+            for call, result in zip(completion.tool_calls, results, strict=True):
                 if self._on_tool_result:
                     self._on_tool_result(call.function.name, result)
-
+                if isinstance(result, Exception):
+                    content = f"Tool failed: {str(result) or type(result).__name__}"
+                else:
+                    content = (
+                        result
+                        if isinstance(result, str)
+                        else json.dumps(result, default=_json_default)
+                    )
                 self._messages.append(
                     ToolResultMessage(
                         tool_call_id=call.id,
-                        content=json.dumps(result, default=_json_default),
+                        content=content,
                     )
                 )
+
+    async def _run_tool_call(self, call: Any) -> object:
+        try:
+            arguments = json.loads(call.function.arguments or "{}")
+            if self._on_tool_call:
+                self._on_tool_call(call.function.name, arguments)
+            tool = self._toolbox.get(call.function.name)
+            if (
+                tool is not None
+                and tool.requires_approval
+                and self._confirm is not None
+                and not self._confirm(call.function.name, arguments)
+            ):
+                return PermissionError("Declined by user")
+            return await self._toolbox.execute(
+                call.function.name, arguments, call_id=call.id
+            )
+        except Exception as error:
+            return error

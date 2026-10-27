@@ -1,7 +1,8 @@
 import asyncio
 import time
 
-from toolbox import CallLoggingMiddleware, ErrorBoundaryMiddleware, Toolbox
+from toolbox import CallLoggingMiddleware, ErrorBoundaryMiddleware, Toolbox, Toolset
+from toolbox import tool as mark_tool
 from toolbox.tools.middleware import ToolCall, ToolHandler, ToolMiddleware
 
 
@@ -15,18 +16,18 @@ class TimingMiddleware(ToolMiddleware):
 
 
 toolbox = Toolbox(
-    middleware=(
-        ErrorBoundaryMiddleware(),
-        CallLoggingMiddleware(),
-        TimingMiddleware(),
-    )
+    middleware=(ErrorBoundaryMiddleware(), CallLoggingMiddleware(), TimingMiddleware())
 )
 
 
-@toolbox.tool("Simulate slow work")
-async def slow_task() -> str:
-    await asyncio.sleep(0.05)
-    return "done"
+class DefinedTools1(Toolset, namespace=None):
+    @mark_tool("Simulate slow work")
+    async def slow_task(self) -> str:
+        await asyncio.sleep(0.05)
+        return "done"
+
+
+toolbox.add(DefinedTools1())
 
 
 async def main() -> None:

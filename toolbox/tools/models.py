@@ -8,8 +8,6 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from toolbox.tools.binding import ToolAvailability, ToolDescription
-from toolbox.tools.context import ToolContext
 from toolbox.tools.schema import ToolSchema, _infer_param_model, _schema_model
 from toolbox.tools.toolset import require_valid_name
 
@@ -30,15 +28,14 @@ class Tool:
     def __init__(
         self,
         name: str,
-        description: str | ToolDescription | None,
+        description: str | None,
         fn: Callable[..., object],
         *,
         param_model: type[BaseModel] | None = None,
-        parameters: Mapping[str, Any] | None = None,
         metadata: ToolMetadata | None = None,
         requires_approval: bool = False,
-        available_when: ToolAvailability | None = None,
-        plugin_name: str | None = None,
+        available_when: Callable[[Any], bool] | None = None,
+        namespace: str | None = None,
         local_name: str | None = None,
     ) -> None:
         if not name:
@@ -51,14 +48,10 @@ class Tool:
         self._metadata = metadata or ToolMetadata()
         self.requires_approval = requires_approval
         self.available_when = available_when
-        self.plugin_name = plugin_name
+        self.namespace = namespace
         self.local_name = local_name
         self.input_model = _schema_model(fn, param_model=self.param_model)
-        self.parameters = (
-            deepcopy(dict(parameters))
-            if parameters is not None
-            else self.input_model.model_json_schema(mode="validation")
-        )
+        self.parameters = self.input_model.model_json_schema(mode="validation")
 
     @property
     def tags(self) -> frozenset[str]:
@@ -68,32 +61,29 @@ class Tool:
     def extra(self) -> Mapping[str, Any]:
         return self._metadata.extra
 
-    def is_available(self, context: ToolContext | None = None) -> bool:
-        return True if self.available_when is None else self.available_when(context)
+    def is_available(self) -> bool:
+        return (
+            True
+            if self.available_when is None
+            else self.available_when(self.fn.__self__)
+        )
 
-    def resolve_description(self, context: ToolContext | None = None) -> str:
-        if isinstance(self.description, ToolDescription):
-            return self.description.resolve(context)
-        return self.description
-
-    def to_schema(self, context: ToolContext | None = None) -> ToolSchema:
+    def to_schema(self) -> ToolSchema:
         return ToolSchema(
             name=self.name,
-            description=self.resolve_description(context),
+            description=self.description,
             parameters=deepcopy(self.parameters),
         )
 
     def to_openai_schema(
         self,
-        context: ToolContext | None = None,
     ) -> dict[str, Any]:
-        return self.to_schema(context).to_openai_schema()
+        return self.to_schema().to_openai_schema()
 
     def to_anthropic_schema(
         self,
-        context: ToolContext | None = None,
     ) -> dict[str, Any]:
-        return self.to_schema(context).to_anthropic_schema()
+        return self.to_schema().to_anthropic_schema()
 
     async def _invoke(self, arguments: dict[str, Any]) -> object:
         if inspect.iscoroutinefunction(self.fn):

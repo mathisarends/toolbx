@@ -4,12 +4,12 @@ from dataclasses import dataclass
 from types import EllipsisType
 from typing import Any, ClassVar
 
-from toolbox.tools.plugins import ToolDefinition, get_tool_definition
+from toolbox.tools.decorators import ToolDefinition, get_tool_definition
 from toolbox.tools.schema import build_schema
 
 _NAME = re.compile(r"^[A-Za-z0-9_-]+$")
 _WORD_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
-_NAMESPACE_SUFFIXES = ("Toolset", "Toolbox", "Tools", "Plugin")
+_NAMESPACE_SUFFIXES = ("Toolset", "Toolbox", "Tools")
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,18 +44,18 @@ def collect_tool_entries(cls: type) -> tuple[ToolEntry, ...]:
                 definition = get_tool_definition(descriptor.__func__)
             if definition is not None:
                 raise TypeError(
-                    f"Plugin tool '{attribute_name}' must be an instance method"
+                    f"Toolset tool '{attribute_name}' must be an instance method"
                 )
             continue
         if definition is None:
             continue
         if not inspect.isfunction(descriptor):
             raise TypeError(
-                f"Plugin tool '{attribute_name}' must be an instance method"
+                f"Toolset tool '{attribute_name}' must be an instance method"
             )
 
         local_name = attribute_name if definition.name is None else definition.name
-        require_valid_name(local_name, "Plugin tool name")
+        require_valid_name(local_name, "Toolset tool name")
         if local_name in local_names:
             raise ValueError(f"{cls.__name__} defines duplicate tool '{local_name}'")
         local_names.add(local_name)
@@ -83,7 +83,7 @@ class Toolset:
     """Base class for grouping ``@tool`` methods that share constructor state.
 
     The namespace prefixes every exposed tool name. It defaults to the
-    snake_case class name without a ``Toolset``/``Toolbox``/``Tools``/``Plugin`` suffix;
+    snake_case class name without a ``Toolset``/``Toolbox``/``Tools`` suffix;
     ``namespace=None`` exposes the tools without a prefix.
     """
 

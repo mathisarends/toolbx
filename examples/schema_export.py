@@ -2,7 +2,8 @@ import asyncio
 
 from pydantic import BaseModel, Field
 
-from toolbox import Toolbox
+from toolbox import Toolbox, Toolset
+from toolbox import tool as mark_tool
 
 toolbox = Toolbox()
 
@@ -12,20 +13,20 @@ class SearchParams(BaseModel):
     limit: int = Field(default=10, ge=1)
 
 
-@toolbox.tool("Search the documentation")
-def search(params: SearchParams) -> None:
-    pass
+class DefinedTools1(Toolset, namespace=None):
+    @mark_tool("Search the documentation")
+    def search(self, params: SearchParams) -> None:
+        pass
+
+
+toolbox.add(DefinedTools1())
 
 
 async def main() -> None:
-    # Provider-neutral form: name/description/parameters, usable to hand-roll
-    # an adapter for a client not covered by the two below.
     native = toolbox.schemas()[0]
     print("native:", native.model_dump())
-
     openai = toolbox.to_openai()[0]
     print("openai:", openai)
-
     anthropic = toolbox.to_anthropic()[0]
     print("anthropic:", anthropic)
 

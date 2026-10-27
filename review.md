@@ -6,34 +6,10 @@ README/CONTRIBUTING. Tests: 90 grün, ruff sauber, Coverage 96 %.
 Alle als **bestätigt** markierten Punkte habe ich mit einem kleinen Skript
 nachgestellt. Die Ausgabe steht jeweils dabei.
 
-## Festgelegte API-Richtung
+Breaking Changes sind erlaubt. Erledigte oder entfallene Punkte werden
+gel?scht; verbleibende IDs bleiben stabil.
 
-- Vereinfachungen dürfen die bestehende API brechen; Kompatibilitäts-Aliasse
-  sind dafür nicht erforderlich.
-- Tools werden ausschließlich als mit `@tool` markierte Instanzmethoden von
-  `Toolset`-Unterklassen definiert. Die `Toolbox` registriert deren Instanzen.
-  Freie Funktions-Tools, `@toolbox.tool` und die öffentliche Registrierung
-  beliebiger `Tool`-Objekte entfallen als alternative Definitionswege.
-- Dependencies werden der Toolset-Instanz explizit über ihren Konstruktor
-  übergeben. `Inject`, `DependencyContainer`, `DependencyProvider`, `@provide`
-  und der typbasierte `ToolContext` entfallen als bibliothekseigenes DI-System.
-- Parameter dürfen weiterhin aus der Methodensignatur oder einem expliziten
-  Params-Modell (`params=Model`) entstehen. Das Flatten-Verhalten ist noch
-  zu klären (R1).
-- `Toolbox.execute` liefert normale Rückgabewerte und lässt Exceptions zum
-  aufrufenden Agent-Loop durch. Fehlerbehandlung per Middleware ist optional
-  und wird ausdrücklich eingebunden; ein einheitlicher `ToolOutcome`-Wrapper
-  ist nicht vorgesehen.
-- Dynamische Verfügbarkeit bleibt erhalten: Tools sollen sich ein- und
-  ausschalten lassen. Die konkrete API sowie die weitere Unterstützung
-  dynamischer Beschreibungen sind noch offen (E8).
-
-Die Zielrichtung ist beschlossen, die Umsetzung steht noch aus. Erledigte
-oder entfallene Punkte werden gelöscht; verbleibende IDs bleiben stabil.
-
----
-
-## 2. Dinge, die in der Praxis schieflaufen können
+## 1. Dinge, die in der Praxis schieflaufen können
 
 ### R1 – Implizites Flatten eines einzelnen Model-Parameters
 
@@ -83,7 +59,7 @@ nur kürzen, wenn mindestens zwei Zeilen wegfallen.
 
 ---
 
-## 3. Ergonomie und API-Design
+## 2. Ergonomie und API-Design
 
 ### E5 – Die Ergebnis-Serialisierung baut jede App selbst
 
@@ -106,19 +82,11 @@ ApprovalMiddleware(confirm=async_confirm)       # gibt standardisierten Decline 
 
 Dann muss nicht jede App den Check vor `execute` nachbauen.
 
-### E8 – Availability und Description über die Toolset-Instanz · offen
+### E8 ? Dynamische Beschreibungen ? offen
 
-Mit dem DI-System entfallen `provided()`, `requires()` und
-`description_from_context`. Benötigte Werte liegen künftig explizit auf der
-Toolset-Instanz.
-
-Dynamische Verfügbarkeit bleibt erhalten; Tools sollen sich ein- und
-ausschalten lassen.
-
-**Noch zu entscheiden:** Erfolgt das Umschalten über eine explizite
-Enable/Disable-API oder über Methoden bzw. Callbacks auf der Toolset-Instanz?
-Wie wirkt sich der Zustand auf Schema-Export und direkte Aufrufe aus?
-Dynamische Beschreibungen sind separat noch zu klären.
+Sollen Beschreibungen dynamisch aus dem Zustand einer Toolset-Instanz
+entstehen k?nnen? Falls ja, sollte der Callback wie bei `available_when`
+die Toolset-Instanz erhalten.
 
 ### E9 – Middleware
 
@@ -127,8 +95,6 @@ Dynamische Beschreibungen sind separat noch zu klären.
   würde auch schlichte `async def`-Middlewares erlauben.
 - Der Parameter `next` überdeckt das gleichnamige Builtin. `call_next` ist
   üblich (Starlette, FastAPI).
-- `ToolHandler` wird nicht exportiert. `examples/custom_middleware.py`
-  importiert es aus dem internen Modul `toolbox.tools.middleware`.
 - Um Argumente zu ändern, braucht man `dataclasses.replace(call, raw_args=…)`.
   Das sollte dokumentiert oder als `call.with_args(...)` angeboten werden.
 
@@ -160,11 +126,10 @@ Felder `required`, optionale Felder als nullable).
 
 ---
 
-## 4. Sprache und Benennung
+## 3. Sprache und Benennung
 
 | Konzept | Aktuelle Namen | Vorschlag |
 |---|---|---|
-| Gruppe von Methoden-Tools | `Toolset`, „plugin“ (`plugins.py`, `plugin_name`, `add_plugin(name=)`, „Plugin tool … must be …“, „Plugin 'x' is already registered“) | durchgehend **toolset** + **namespace**; `add_plugin` entfernen, `Tool.plugin_name` → `Tool.namespace`, `plugins.py` → `decorators.py` |
 | Params-Model | Decorator `params=`, `Tool(param_model=)`, `tool.input_model`, `build_schema(param_model=)` | einheitlich `params_model` bzw. `params=` |
 | JSON-Schema | `tool.parameters`, `ToolSchema.parameters`, Anthropic `input_schema` | `tool.input_schema` (passt zu Anthropic/MCP) |
 | Argumente | `ToolCall.raw_args`, `execute(arguments=)` | überall `arguments` |
@@ -173,7 +138,7 @@ Felder `required`, optionale Felder als nullable).
 
 Weitere Kleinigkeiten:
 
-- `ToolRegistry.execute` meldet bei einem Tool, das es gibt, das aber nicht
+- `Toolbox.execute` meldet bei einem Tool, das es gibt, das aber nicht
   verfügbar ist, „Unknown tool“. Für das LLM ist das in Ordnung, beim Debuggen
   irritiert es. Ein Log-Eintrag auf DEBUG-Level mit dem echten Grund würde
   helfen.
@@ -182,12 +147,11 @@ Weitere Kleinigkeiten:
 
 ---
 
-## 5. Doku und Repo
+## 4. Doku und Repo
 
 - 0.4.0 entfernt viele öffentliche APIs, aber es gibt weder CHANGELOG noch
   Migrationshinweise. Bei einer 0.x-Version ist das erlaubt, für Nutzer ist es
   trotzdem ein harter Bruch.
-- `ToolHandler` wird nicht exportiert (siehe E9).
 - `Agents.md` und `Claude.md` enthalten fast dieselben Konventionen. Eine
   Quelle reicht, die andere kann darauf verweisen.
 - `pyproject.toml`: Classifiers (inkl. `Typing :: Typed`) und
@@ -195,27 +159,3 @@ Weitere Kleinigkeiten:
 - `Tool.__eq__`/`__hash__` vergleichen nur über den Namen. Zwei
   verschiedene Tools aus zwei Registries gelten damit als gleich. Das ist
   vertretbar, sollte aber bewusst so entschieden sein.
-
----
-
-## 6. Empfohlene Reihenfolge
-
-**Zuerst: beschlossene Vereinfachung umsetzen:**
-Nur Toolset-Instanzen registrieren; Funktions-Tools und das DI-System samt
-Context- und Binding-Helfern entfernen. Beispiele, Tests und Dokumentation
-auf die explizite Übergabe von Dependencies im Toolset-Konstruktor umstellen.
-Die neue API für Availability und Description vorher klären (E8).
-
-**Kleine, unabhängige Korrekturen:**
-`name` nur als Keyword (E11)
-
-**Weitere Vereinfachungen und Validierung:**
-R8
-(Signaturprüfung und Argumentzuordnung bei Definition bzw. Registrierung) ·
-Begriffe vereinheitlichen
-(Abschnitt 4, vor allem plugin → toolset)
-
-**Noch offene API-Entscheidungen:**
-R1 (Flatten-Verhalten) · E5 (Serialisierung) · E6
-(Approval-Middleware). Breaking Changes sind
-zulässig; der Nutzen zusätzlicher Komfortfunktionen ist jeweils noch zu klären.

@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 from collections.abc import Callable, Mapping
 from copy import deepcopy
@@ -95,7 +96,10 @@ class Tool:
         return self.to_schema(context).to_anthropic_schema()
 
     async def _invoke(self, arguments: dict[str, Any]) -> object:
-        result = self.fn(**arguments)
+        if inspect.iscoroutinefunction(self.fn):
+            result = self.fn(**arguments)
+        else:
+            result = await asyncio.to_thread(self.fn, **arguments)
         return await result if inspect.isawaitable(result) else result
 
     def __eq__(self, other: object) -> bool:

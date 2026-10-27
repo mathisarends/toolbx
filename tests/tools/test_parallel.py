@@ -1,5 +1,6 @@
 import asyncio
 import json
+import threading
 
 import pytest
 
@@ -89,3 +90,22 @@ async def test_cancelling_a_batch_cancels_its_outstanding_calls() -> None:
     with pytest.raises(asyncio.CancelledError):
         await batch
     assert cancelled.is_set()
+
+
+@pytest.mark.asyncio
+async def test_blocking_sync_calls_run_in_parallel_without_blocking_the_loop() -> None:
+    barrier = threading.Barrier(2, timeout=2)
+
+    class Blocking(Toolset, namespace=None):
+        @tool("Wait for another worker")
+        def wait(self, value: int) -> int:
+            barrier.wait()
+            return value
+
+    results = await asyncio.wait_for(
+        Toolbox(Blocking()).execute_many(
+            [ToolRequest("wait", {"value": 1}), ToolRequest("wait", {"value": 2})]
+        ),
+        timeout=3,
+    )
+    assert results == [1, 2]

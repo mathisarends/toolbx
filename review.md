@@ -47,13 +47,6 @@ Prompt-Verhalten und gespeicherte Transkripte.
 oder mit einem klaren Marker wie `params: Params[SearchParams]`. Sonst
 verhalten sich Model-Parameter wie alle anderen Parameter.
 
-### R2 – Sync-Tools blockieren den Event-Loop
-
-`Tool.execute` ruft Sync-Funktionen direkt im Loop auf. Ein `requests.get`
-oder eine Datenbankabfrage in einem Sync-Tool blockiert alle parallelen
-Tool-Calls und Streams. Vorschlag: `@tool(..., run_in_thread=True)` oder
-standardmäßig `asyncio.to_thread` für Sync-Funktionen.
-
 ### R5 – `CallLoggingMiddleware` loggt rohe Argumente auf INFO
 
 `middleware.py:54` loggt `call.raw_args` vollständig. Tool-Argumente
@@ -224,5 +217,5 @@ Begriffe vereinheitlichen
 
 **Noch offene API-Entscheidungen:**
 R1 (Flatten-Verhalten) · E5 (Serialisierung) · E6
-(Approval-Middleware) · R2 (Sync-Tools in Threads). Breaking Changes sind
+(Approval-Middleware). Breaking Changes sind
 zulässig; der Nutzen zusätzlicher Komfortfunktionen ist jeweils noch zu klären.

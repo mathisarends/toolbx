@@ -266,6 +266,10 @@ Calls run concurrently. Results keep input order; failed calls contribute their
 exception to the list. Use `return_exceptions=False` to propagate the first
 failure. Cancelling the batch cancels its outstanding calls.
 
+Synchronous tool methods run in worker threads; asynchronous methods run on the
+event loop. Cancellation stops awaiting a synchronous call, but cannot stop its
+already running thread.
+
 ## Dependency injection
 
 A tool that needs a client, a session, or a connection declares it as an

@@ -181,7 +181,8 @@ hints are available through `toolbox.get(name)` and iteration. Approval remains
 an agent-loop responsibility; `requires_approval` does not gate execution.
 
 Exported schemas are independent copies and can be transformed without changing
-the registered tool. `OutputBudget` is available for tools that return long text.
+the registered tool. `OutputBudget(max_chars=20_000)` caps long text, including
+truncation markers, while retaining both ends where the budget permits.
 
 ## Migration
 

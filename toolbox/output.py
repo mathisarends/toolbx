@@ -16,9 +16,10 @@ class OutputBudget:
     head_lines: int = 60
     tail_lines: int = 40
     max_line_chars: int = 2000
+    max_chars: int = 20_000
 
     def __post_init__(self) -> None:
-        for name in ("head_lines", "tail_lines", "max_line_chars"):
+        for name in ("head_lines", "tail_lines", "max_line_chars", "max_chars"):
             if getattr(self, name) <= 0:
                 raise ValueError(f"{name} must be positive")
 
@@ -26,22 +27,34 @@ class OutputBudget:
         if not text:
             return text
 
-        lines = [self._clamp(line) for line in text.splitlines()]
+        lines = []
+        for line in text.splitlines(keepends=True):
+            content = line.rstrip("\r\n")
+            lines.append(self._clamp(content) + line[len(content) :])
         kept = self.head_lines + self.tail_lines
-        if len(lines) <= kept:
-            return "\n".join(lines)
+        if len(lines) > kept + 1:
+            omitted = len(lines) - kept
+            marker = f"[... {omitted} lines omitted"
+            if hint:
+                marker = f"{marker}; {hint}"
+            newline = "\r\n" if lines[0].endswith("\r\n") else "\n"
+            shaped = (
+                "".join(lines[: self.head_lines])
+                + f"{marker} ...]{newline}"
+                + "".join(lines[-self.tail_lines :])
+            )
+        else:
+            shaped = "".join(lines)
 
-        omitted = len(lines) - kept
-        marker = f"[... {omitted} lines omitted"
-        if hint:
-            marker = f"{marker}; {hint}"
-        return "\n".join(
-            [
-                *lines[: self.head_lines],
-                f"{marker} ...]",
-                *lines[-self.tail_lines :],
-            ]
-        )
+        if len(shaped) <= self.max_chars:
+            return shaped
+        marker = f"[... output truncated{'; ' + hint if hint else ''} ...]"
+        if len(marker) >= self.max_chars:
+            return marker[: self.max_chars]
+        remaining = self.max_chars - len(marker)
+        head = (remaining + 1) // 2
+        tail = remaining // 2
+        return shaped[:head] + marker + (shaped[-tail:] if tail else "")
 
     def _clamp(self, line: str) -> str:
         if len(line) <= self.max_line_chars:

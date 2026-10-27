@@ -9,19 +9,6 @@ nachgestellt. Die Ausgabe steht jeweils dabei.
 Breaking Changes sind erlaubt. Erledigte oder entfallene Punkte werden
 gel?scht; verbleibende IDs bleiben stabil.
 
-## 1. Dinge, die in der Praxis schieflaufen können
-
-### R9 – `OutputBudget` begrenzt die Gesamtlänge nicht
-
-Bei 60 + 40 Zeilen mit je 2000 Zeichen kommen bis zu 200 000 Zeichen durch,
-grob 50 000 Tokens. Das ist kein echtes Budget. Weitere Kleinigkeiten:
-`splitlines()` normalisiert `\r\n` und entfernt den abschließenden
-Zeilenumbruch. Ein Marker für genau eine Zeile („1 lines omitted“) kostet so
-viel wie die Zeile selbst. Vorschlag: zusätzlich `max_chars` einführen und
-nur kürzen, wenn mindestens zwei Zeilen wegfallen.
-
----
-
 ## 2. Ergonomie und API-Design
 
 ### E5 – Die Ergebnis-Serialisierung baut jede App selbst

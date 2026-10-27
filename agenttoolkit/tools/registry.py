@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Mapping, Sequence
+from types import EllipsisType
 from typing import Annotated, Any, get_args, get_origin, get_type_hints
 
 from pydantic import BaseModel
@@ -11,7 +12,11 @@ from agenttoolkit.tools.binding import ToolAvailability, ToolDescription
 from agenttoolkit.tools.context import _INJECT_MARKER, ToolContext
 from agenttoolkit.tools.middleware import ToolCall, ToolMiddleware, compose
 from agenttoolkit.tools.models import StatusFormatter, Tool, ToolMetadata
-from agenttoolkit.tools.toolset import collect_tool_entries, require_valid_name
+from agenttoolkit.tools.toolset import (
+    AgentToolset,
+    collect_tool_entries,
+    require_valid_name,
+)
 
 
 class ToolRegistry:
@@ -87,24 +92,60 @@ class ToolRegistry:
 
     def add_plugin(self, plugin: object, *, name: str) -> tuple[Tool, ...]:
         """Atomically register decorated methods from a plugin instance."""
-        if isinstance(plugin, type):
-            raise TypeError("add_plugin expects an instance, not a class")
         require_valid_name(name, "Plugin name")
-        if any(tool.plugin_name == name for tool in self._tools.values()):
-            raise ValueError(f"Plugin '{name}' is already registered")
+        return self.add(plugin, namespace=name)
 
-        entries = collect_tool_entries(type(plugin))
+    def add(
+        self,
+        toolset: object,
+        *,
+        namespace: str | EllipsisType | None = ...,
+    ) -> tuple[Tool, ...]:
+        """Atomically register the ``@tool`` methods of a toolset instance.
+
+        The namespace defaults to the one declared by an ``AgentToolset``
+        subclass; pass it to register several instances of one class or to
+        register objects which are not ``AgentToolset`` subclasses.
+        """
+        if isinstance(toolset, type):
+            raise TypeError("add expects an instance, not a class")
+        toolset_type = type(toolset)
+        if namespace is ...:
+            if not isinstance(toolset, AgentToolset):
+                raise TypeError(
+                    f"{toolset_type.__name__} is not an AgentToolset; "
+                    "pass namespace= to register it"
+                )
+            namespace = toolset_type.namespace
+        if namespace is not None:
+            require_valid_name(namespace, "Namespace")
+            if any(tool.plugin_name == namespace for tool in self._tools.values()):
+                raise ValueError(
+                    f"Plugin '{namespace}' is already registered; pass namespace= "
+                    f"to register another {toolset_type.__name__} instance"
+                )
+
+        entries = collect_tool_entries(toolset_type)
         if not entries:
-            raise ValueError(f"Plugin '{name}' does not define any tools")
+            raise ValueError(f"{toolset_type.__name__} does not define any tools")
 
         pending: list[Tool] = []
+        collisions: list[str] = []
         for entry in entries:
-            method = getattr(plugin, entry.attribute_name)
+            method = getattr(toolset, entry.attribute_name)
             definition = entry.definition
             _reject_plugin_method_injection(entry.attribute_name, method)
-            exposed_name = f"{name}_{entry.local_name}"
-            if exposed_name in self._tools:
-                raise ValueError(f"Tool '{exposed_name}' is already registered")
+            exposed_name = (
+                entry.local_name
+                if namespace is None
+                else f"{namespace}_{entry.local_name}"
+            )
+            existing = self._tools.get(exposed_name)
+            if existing is not None:
+                collisions.append(
+                    f"Tool '{exposed_name}' is already registered "
+                    f"(defined by {_describe_source(existing)})"
+                )
 
             pending.append(
                 Tool(
@@ -119,10 +160,12 @@ class ToolRegistry:
                     ),
                     requires_approval=definition.requires_approval,
                     available_when=definition.available_when,
-                    plugin_name=name,
+                    plugin_name=namespace,
                     local_name=entry.local_name,
                 )
             )
+        if collisions:
+            raise ValueError("; ".join(collisions))
 
         for registered_tool in pending:
             self._tools[registered_tool.name] = registered_tool
@@ -170,6 +213,13 @@ class ToolRegistry:
         params = tool.input_model.model_validate(call.raw_args)
         arguments = await resolve_arguments(tool, params, call.container, call.context)
         return await tool.execute(arguments)
+
+
+def _describe_source(tool: Tool) -> str:
+    owner = getattr(tool.fn, "__self__", None)
+    if owner is None:
+        return "a function tool"
+    return type(owner).__name__
 
 
 def _reject_plugin_method_injection(

@@ -21,8 +21,10 @@ from .registry import ToolRegistry
 from .schema import ToolSchema, build_schema
 from .structured import StructuredOutputTools
 from .tools import Tools
+from .toolset import AgentToolset
 
 __all__ = [
+    "AgentToolset",
     "CallLoggingMiddleware",
     "DependencyProvider",
     "ErrorBoundaryMiddleware",

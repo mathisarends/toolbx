@@ -8,6 +8,7 @@ from .skills import (
     parse_skill,
 )
 from .tools import (
+    AgentToolset,
     CallLoggingMiddleware,
     ErrorBoundaryMiddleware,
     Inject,
@@ -32,6 +33,7 @@ from .tools import (
 )
 
 __all__ = [
+    "AgentToolset",
     "CallLoggingMiddleware",
     "DependencyProvider",
     "ErrorBoundaryMiddleware",

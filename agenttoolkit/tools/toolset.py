@@ -1,10 +1,14 @@
 import inspect
 import re
 from dataclasses import dataclass
+from types import EllipsisType
+from typing import Any, ClassVar
 
 from agenttoolkit.tools.plugins import ToolDefinition, get_tool_definition
 
 _NAME = re.compile(r"^[A-Za-z0-9_-]+$")
+_WORD_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
+_NAMESPACE_SUFFIXES = ("Toolset", "Tools", "Plugin")
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,3 +58,36 @@ def collect_tool_entries(cls: type) -> tuple[ToolEntry, ...]:
         local_names.add(local_name)
         entries.append(ToolEntry(attribute_name, local_name, definition))
     return tuple(entries)
+
+
+def default_namespace(class_name: str) -> str:
+    for suffix in _NAMESPACE_SUFFIXES:
+        if class_name.endswith(suffix) and class_name != suffix:
+            class_name = class_name.removesuffix(suffix)
+            break
+    return _WORD_BOUNDARY.sub("_", class_name).lower()
+
+
+class AgentToolset:
+    """Base class for grouping ``@tool`` methods that share constructor state.
+
+    The namespace prefixes every exposed tool name. It defaults to the
+    snake_case class name without a ``Toolset``/``Tools``/``Plugin`` suffix;
+    ``namespace=None`` exposes the tools without a prefix.
+    """
+
+    namespace: ClassVar[str | None] = None
+
+    def __init_subclass__(
+        cls,
+        *,
+        namespace: str | EllipsisType | None = ...,
+        **kwargs: Any,
+    ) -> None:
+        super().__init_subclass__(**kwargs)
+        if namespace is ...:
+            namespace = default_namespace(cls.__name__)
+        if namespace is not None:
+            require_valid_name(namespace, "Namespace")
+        cls.namespace = namespace
+        collect_tool_entries(cls)

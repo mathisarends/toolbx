@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 import inspect
 from collections.abc import Callable
 from typing import Annotated, Any, get_args, get_origin, get_type_hints
 
 from pydantic import BaseModel, ConfigDict, create_model
+
+from toolbx.tools.json_schema import inline_refs, strict_schema, strip_titles
 
 
 class ToolSchema(BaseModel):
@@ -10,15 +14,16 @@ class ToolSchema(BaseModel):
     description: str
     input_schema: dict[str, Any]
 
-    def to_openai_schema(self) -> dict[str, Any]:
-        return {
-            "type": "function",
-            "function": {
-                "name": self.name,
-                "description": self.description,
-                "parameters": self.input_schema,
-            },
+    def to_openai_schema(self, *, strict: bool = False) -> dict[str, Any]:
+        parameters = strict_schema(self.input_schema) if strict else self.input_schema
+        function: dict[str, Any] = {
+            "name": self.name,
+            "description": self.description,
+            "parameters": parameters,
         }
+        if strict:
+            function["strict"] = True
+        return {"type": "function", "function": function}
 
     def to_anthropic_schema(self) -> dict[str, Any]:
         return {
@@ -27,15 +32,26 @@ class ToolSchema(BaseModel):
             "input_schema": self.input_schema,
         }
 
+    def inline_refs(self) -> ToolSchema:
+        """Return a copy with local ``$ref`` pointers replaced by their targets.
+
+        For providers that reject ``$ref``/``$defs``. Recursive models cannot
+        be inlined and raise ``ValueError``.
+        """
+        return self.model_copy(update={"input_schema": inline_refs(self.input_schema)})
+
 
 def build_schema(
     func: Callable | None = None,
     *,
     params_model: type[BaseModel] | None = None,
 ) -> dict[str, Any]:
-    return _schema_model(func, params_model=params_model).model_json_schema(
-        mode="validation"
-    )
+    return model_schema(_schema_model(func, params_model=params_model))
+
+
+def model_schema(model: type[BaseModel]) -> dict[str, Any]:
+    # Pydantic titles every model and field; they only cost tokens.
+    return strip_titles(model.model_json_schema(mode="validation"))
 
 
 def _schema_model(
@@ -104,7 +120,7 @@ def _model_from_callable(func: Callable) -> type[BaseModel]:
             descriptions[name] = description
 
     model = create_model(
-        f"{function_name.title().replace('_', '')}Params",
+        f"{_pascal_case(function_name)}Params",
         __config__=ConfigDict(extra="forbid", arbitrary_types_allowed=True),
         **fields,
     )
@@ -112,6 +128,10 @@ def _model_from_callable(func: Callable) -> type[BaseModel]:
         model.model_fields[name].description = description
     model.model_rebuild(force=True)
     return model
+
+
+def _pascal_case(name: str) -> str:
+    return "".join(part[:1].upper() + part[1:] for part in name.split("_"))
 
 
 def _annotated_description(annotation: Any) -> str | None:

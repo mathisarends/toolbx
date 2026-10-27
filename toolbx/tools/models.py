@@ -7,7 +7,12 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from toolbx.tools.schema import ToolSchema, _params_parameter, _schema_model
+from toolbx.tools.schema import (
+    ToolSchema,
+    _params_parameter,
+    _schema_model,
+    model_schema,
+)
 from toolbx.tools.toolset import require_valid_name
 
 
@@ -43,7 +48,7 @@ class Tool:
         self.namespace = namespace
         self.local_name = local_name
         self._input_model = _schema_model(fn, params_model=params_model)
-        self.input_schema = self._input_model.model_json_schema(mode="validation")
+        self.input_schema = model_schema(self._input_model)
 
     def is_available(self) -> bool:
         return (
@@ -59,14 +64,10 @@ class Tool:
             input_schema=deepcopy(self.input_schema),
         )
 
-    def to_openai_schema(
-        self,
-    ) -> dict[str, Any]:
-        return self.to_schema().to_openai_schema()
+    def to_openai_schema(self, *, strict: bool = False) -> dict[str, Any]:
+        return self.to_schema().to_openai_schema(strict=strict)
 
-    def to_anthropic_schema(
-        self,
-    ) -> dict[str, Any]:
+    def to_anthropic_schema(self) -> dict[str, Any]:
         return self.to_schema().to_anthropic_schema()
 
     async def _invoke(self, arguments: dict[str, Any]) -> object:

@@ -25,26 +25,9 @@ Sollen Beschreibungen dynamisch aus dem Zustand einer Toolset-Instanz
 entstehen können? Falls ja, sollte der Callback wie bei `available_when`
 die Toolset-Instanz erhalten.
 
-### E12 – Das Schema enthält viel Ballast
-
-Pydantic erzeugt für jedes Feld `title` (`"title": "Q"`), dazu ein
-Model-`title` (`"SParams"`) und bei verschachtelten Models
-`$defs`/`$ref`. Das kostet Tokens, und einige Provider (Gemini,
-OpenAI-strict) verarbeiten `$ref` schlecht oder gar nicht. Vorschlag: einen
-optionalen Schema-Normalizer anbieten (Titles entfernen, `$ref` auflösen) und
-einen `strict=True`-Export für OpenAI (`additionalProperties: false`, alle
-Felder `required`, optionale Felder als nullable).
-
 ---
 
-## 2. Sprache und Benennung
-
-- Die Model-Namen entstehen per `function_name.title()`, aus `get_HTTP` wird
-  `Get_Http` → `GetHttpParams`. Rein kosmetisch, landet aber im Schema-`title`.
-
----
-
-## 3. Doku und Repo
+## 2. Doku und Repo
 
 - `Agents.md` und `Claude.md` enthalten fast dieselben Konventionen. Eine
   Quelle reicht, die andere kann darauf verweisen.

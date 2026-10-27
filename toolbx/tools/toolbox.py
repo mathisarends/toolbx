@@ -8,6 +8,7 @@ from types import EllipsisType
 from typing import Any
 
 from toolbx.tools.arguments import resolve_arguments
+from toolbx.tools.json_schema import drop_omitted_nulls
 from toolbx.tools.middleware import ToolCall, ToolMiddleware, ToolRequest, compose
 from toolbx.tools.models import Tool
 from toolbx.tools.schema import ToolSchema
@@ -40,8 +41,8 @@ class Toolbox:
             tool.to_schema() for tool in self._tools.values() if tool.is_available()
         ]
 
-    def to_openai(self) -> list[dict[str, Any]]:
-        return [schema.to_openai_schema() for schema in self.schemas()]
+    def to_openai(self, *, strict: bool = False) -> list[dict[str, Any]]:
+        return [schema.to_openai_schema(strict=strict) for schema in self.schemas()]
 
     def to_anthropic(self) -> list[dict[str, Any]]:
         return [schema.to_anthropic_schema() for schema in self.schemas()]
@@ -236,7 +237,9 @@ class Toolbox:
             ]
             raise LookupError(f"Unknown tool '{call.name}'. Available: {available}")
 
-        params = tool._input_model.model_validate(call.arguments)
+        params = tool._input_model.model_validate(
+            drop_omitted_nulls(call.arguments, tool.input_schema)
+        )
         arguments = resolve_arguments(tool, params)
         return await tool._invoke(arguments)
 

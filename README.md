@@ -82,6 +82,18 @@ A model used in a normal signature stays nested: `create(user: User)` accepts
 `{"user": {"name": "Ada"}}`. Adding another method parameter does not change
 that shape. Only an explicit `params=User` uses `{"name": "Ada"}` at the top level.
 
+### Schema export
+
+Exported schemas leave out the `title` keys Pydantic adds to every model and
+field, since they only cost tokens. Nested models still use `$defs`/`$ref`;
+`schema.inline_refs()` returns a copy without them for providers that reject
+references (recursive models cannot be inlined).
+
+`toolbox.to_openai(strict=True)` emits OpenAI strict-mode schemas: every object
+forbids extra keys, every property is required, and optional properties become
+nullable. When executing, a `null` for an optional property that does not
+itself accept `null` counts as omitted, so the default applies.
+
 ## Namespaces and composition
 
 A toolset's default namespace is its class name in snake case, without a
@@ -220,6 +232,7 @@ This API deliberately breaks earlier versions:
   `ToolSchema.input_schema` replace `parameters`; `ToolCall.arguments` replaces
   `raw_args`; `tool.metadata` replaces `tool.extra` and `ToolMetadata` is
   removed; `OutputBudget.truncate()` replaces `shape()`.
+- Exported schemas no longer contain Pydantic `title` keys.
 - `@tool` accepts `name` only as a keyword and rejects tools without a
   description or docstring.
 

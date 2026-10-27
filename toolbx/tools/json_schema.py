@@ -7,6 +7,7 @@ from typing import Any
 _NAME_MAPS = frozenset({"properties", "patternProperties", "$defs", "definitions"})
 # Keys whose values are data, not subschemas.
 _DATA_KEYS = frozenset({"default", "examples", "const", "enum"})
+_ANNOTATION_KEYS = ("description", "default", "examples")
 
 
 def strip_titles(node: Any) -> Any:
@@ -62,12 +63,22 @@ def strict_schema(schema: dict[str, Any]) -> dict[str, Any]:
             required = set(converted.get("required", ()))
             for name, prop in properties.items():
                 if name not in required and not _allows_null(prop, schema):
-                    properties[name] = {"anyOf": [prop, {"type": "null"}]}
+                    properties[name] = _nullable(prop)
             converted["required"] = list(properties)
             converted["additionalProperties"] = False
         return converted
 
     return convert(schema)
+
+
+def _nullable(prop: Any) -> dict[str, Any]:
+    if not isinstance(prop, dict):
+        return {"anyOf": [prop, {"type": "null"}]}
+    # Annotations stay on the property itself so the model still reads them
+    # next to the field name rather than inside one branch of the union.
+    annotations = {key: prop[key] for key in _ANNOTATION_KEYS if key in prop}
+    inner = {key: value for key, value in prop.items() if key not in annotations}
+    return {**annotations, "anyOf": [inner, {"type": "null"}]}
 
 
 def _map_subschemas(

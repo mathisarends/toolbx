@@ -98,8 +98,14 @@ def test_strict_openai_export_requires_all_fields_and_nullable_optionals() -> No
     assert parameters["properties"]["title"] == {"type": "string"}
     assert address["additionalProperties"] is False
     assert address["required"] == ["city", "zip_code"]
-    assert "anyOf" in address["properties"]["zip_code"]
-    assert len(address["properties"]["zip_code"]["anyOf"]) == 2
+
+    assert address["properties"]["zip_code"] == {
+        "anyOf": [{"type": "string"}, {"type": "null"}],
+        "default": None,
+    }
+    nickname = parameters["properties"]["nickname"]
+    assert nickname["default"] == "none"
+    assert nickname["anyOf"] == [{"type": "string"}, {"type": "null"}]
 
     count = exported["get_HTTP"]["parameters"]
     assert count["required"] == ["limit", "tag"]
